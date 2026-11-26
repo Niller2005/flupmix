@@ -7,6 +7,11 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-26
+
+### Fixed
+- `install.sh` also installs PNG icons and force-refreshes the per-user icon cache, so launchers such as Vicinae show the flupmix icon.
+
 ## [0.5.1] - 2026-11-26
 
 ### Changed
@@ -66,7 +71,8 @@ First release.
 - TOML persistence in `~/.config/flupmix/config.toml`, system tray (StatusNotifierItem) with keep-running on window close.
 - Desktop entry, icon and `install.sh` for per-user installation.
 
-[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/Niller2005/flupmix/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/Niller2005/flupmix/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/Niller2005/flupmix/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Niller2005/flupmix/compare/v0.4.0...v0.4.1
