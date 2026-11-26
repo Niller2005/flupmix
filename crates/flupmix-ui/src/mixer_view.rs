@@ -274,7 +274,6 @@ impl MixerView {
             .w(px(164.))
             .min_w(px(164.))
             .h_full()
-            .flex_grow_1()
             .flex_shrink_0()
             .flex()
             .flex_col()
