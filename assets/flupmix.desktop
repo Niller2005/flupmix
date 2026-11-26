@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=flupmix
+GenericName=Audio Mixer
+Comment=Voicemeeter-style mixer for PipeWire
+Exec=flupmix
+Icon=flupmix
+Terminal=false
+Categories=AudioVideo;Audio;Mixer;
+Keywords=audio;mixer;pipewire;voicemeeter;routing;
+StartupWMClass=flupmix

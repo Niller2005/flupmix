@@ -1,0 +1,73 @@
+name: Release
+
+# Push a tag like v0.1.0 (matching the workspace version and a CHANGELOG.md
+# section) to build the Linux binary and publish a GitHub release.
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check tag, version and changelog
+        id: meta
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          crate_version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
+          if [ "$version" != "$crate_version" ]; then
+            echo "::error::tag $tag does not match workspace version $crate_version"
+            exit 1
+          fi
+          # Release notes: the CHANGELOG section for this version.
+          awk -v v="$version" '
+            /^## \[/ { if (found) exit; if (index($0, "## [" v "]") == 1) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "::error::CHANGELOG.md has no entry for $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config clang cmake libpipewire-0.3-dev libspa-0.2-dev libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libx11-xcb-dev libxcb1-dev libxcb-xkb-dev libfontconfig-dev libfreetype-dev libvulkan-dev libasound2-dev libssl-dev libzstd-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: cargo test --workspace
+      - run: cargo build --release --locked -p flupmix
+
+      - name: Package
+        id: pkg
+        run: |
+          name="flupmix-${GITHUB_REF_NAME}-x86_64-linux"
+          mkdir -p "dist/$name/assets"
+          cp target/release/flupmix "dist/$name/flupmix"
+          strip "dist/$name/flupmix"
+          cp install.sh LICENSE README.md CHANGELOG.md "dist/$name/"
+          cp assets/flupmix.svg assets/flupmix.desktop "dist/$name/assets/"
+          tar -C dist -czf "dist/$name.tar.gz" "$name"
+          (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
+          echo "archive=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: flupmix ${{ steps.meta.outputs.version }}
+          body_path: release-notes.md
+          prerelease: ${{ contains(steps.meta.outputs.version, '-') }}
+          files: |
+            ${{ steps.pkg.outputs.archive }}
+            ${{ steps.pkg.outputs.archive }}.sha256
