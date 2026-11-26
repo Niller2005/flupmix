@@ -8,6 +8,7 @@ pub mod mix;
 pub mod model;
 pub mod presets;
 pub mod rules;
+pub mod settings;
 pub mod shared;
 
 pub use model::{AppMatch, Bus, HwBus, MixerState, Strip, StripSource};

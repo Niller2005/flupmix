@@ -1,8 +1,8 @@
 use crate::{
-    mixer_view::MixerView, patchbay::PatchbayView, theme, widgets::button::button, Tab, TrayEvent,
-    UiOptions,
+    mixer_view::MixerView, patchbay::PatchbayView, settings_model::SettingsModel, theme,
+    widgets::button::button, Tab, TrayEvent, UiOptions,
 };
-use flupmix_core::{config, EngineHandle, MixerState};
+use flupmix_core::{config, presets, settings, EngineHandle, MixerState};
 use gpui::{
     div, prelude::*, px, rgb, size, App, Bounds, Context, Entity, FocusHandle, Render, Task,
     Window, WindowBounds, WindowHandle, WindowOptions,
@@ -37,16 +37,18 @@ impl Target {
 pub(crate) struct MixerModel {
     pub(crate) state: MixerState,
     pub(crate) engine: EngineHandle,
+    pub(crate) settings: Entity<SettingsModel>,
     save_task: Option<Task<()>>,
 }
 
 impl MixerModel {
-    fn new(mut state: MixerState, engine: EngineHandle) -> Self {
+    fn new(mut state: MixerState, engine: EngineHandle, settings: Entity<SettingsModel>) -> Self {
         state.sanitize();
         engine.set_state(&state);
         Self {
             state,
             engine,
+            settings,
             save_task: None,
         }
     }
@@ -72,6 +74,8 @@ impl MixerModel {
 
 struct RootView {
     mixer: Entity<MixerView>,
+    model: Entity<MixerModel>,
+    settings: Entity<SettingsModel>,
     patchbay: Entity<PatchbayView>,
     tab: Tab,
     focus: FocusHandle,
@@ -86,6 +90,7 @@ impl RootView {
         cx: &mut Context<Self>,
     ) -> Self {
         let engine = model.read(cx).engine.clone();
+        let settings = model.read(cx).settings.clone();
         let connected = engine.shared.snapshot().connected;
         let mixer = cx.new(|cx| MixerView::new(model.clone(), cx));
         mixer.update(cx, |mixer, _| mixer.set_visible(tab == Tab::Mixer));
@@ -111,6 +116,8 @@ impl RootView {
         })
         .detach();
         Self {
+            model,
+            settings,
             mixer,
             patchbay,
             tab,
@@ -128,6 +135,77 @@ impl RootView {
             self.focus.focus(window, cx);
         }
     }
+
+    fn shortcut(
+        &mut self,
+        event: &gpui::KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
+        if !self.settings.read(cx).values.shortcuts {
+            return false;
+        }
+        let key = &event.keystroke;
+        let Some(index) = shortcut_index(&key.key) else {
+            return false;
+        };
+        if key.modifiers.alt
+            && !key.modifiers.control
+            && !key.modifiers.platform
+            && !key.modifiers.shift
+        {
+            let strip = self
+                .model
+                .read(cx)
+                .state
+                .strips
+                .get(index)
+                .map(|strip| strip.id);
+            if let Some(id) = strip {
+                self.model.update(cx, |model, cx| {
+                    model.change(cx, |state| {
+                        if let Some(strip) = state.strip_mut(id) {
+                            strip.mute = !strip.mute;
+                        }
+                    })
+                });
+            }
+            return true;
+        }
+        if key.modifiers.control
+            && key.modifiers.shift
+            && !key.modifiers.alt
+            && !key.modifiers.platform
+        {
+            if let Some(name) = presets::list().get(index) {
+                match presets::load(name) {
+                    Ok(state) => self
+                        .mixer
+                        .update(cx, |mixer, cx| mixer.load_preset(state, window, cx)),
+                    Err(error) => eprintln!("flupmix: loading preset {name}: {error}"),
+                }
+            }
+            self.focus.focus(window, cx);
+            return true;
+        }
+        false
+    }
+}
+
+fn shortcut_index(key: &str) -> Option<usize> {
+    // Some keyboard backends report the shifted character for Ctrl+Shift+digit.
+    match key {
+        "1" | "!" => Some(0),
+        "2" | "@" => Some(1),
+        "3" | "#" => Some(2),
+        "4" | "$" => Some(3),
+        "5" | "%" => Some(4),
+        "6" | "^" => Some(5),
+        "7" | "&" => Some(6),
+        "8" | "*" => Some(7),
+        "9" | "(" => Some(8),
+        _ => None,
+    }
 }
 
 impl Render for RootView {
@@ -136,13 +214,21 @@ impl Render for RootView {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(theme::BG))
-            .text_color(rgb(theme::TEXT))
+            .bg(rgb(theme::colors().bg))
+            .text_color(rgb(theme::colors().text))
             .font_family(theme::FONT_UI)
             .track_focus(&self.focus)
             .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
+                if this.shortcut(event, window, cx) {
+                    cx.stop_propagation();
+                    return;
+                }
                 let key = &event.keystroke;
-                if key.modifiers.control && !key.modifiers.alt && !key.modifiers.platform {
+                if key.modifiers.control
+                    && !key.modifiers.shift
+                    && !key.modifiers.alt
+                    && !key.modifiers.platform
+                {
                     let tab = match key.key.as_str() {
                         "1" => Some(Tab::Mixer),
                         "2" => Some(Tab::Patchbay),
@@ -163,7 +249,7 @@ impl Render for RootView {
                     .gap_4()
                     .px_6()
                     .border_b_1()
-                    .border_color(rgb(theme::BORDER))
+                    .border_color(rgb(theme::colors().border))
                     .child(
                         div()
                             .flex()
@@ -171,7 +257,7 @@ impl Render for RootView {
                             .mr_6()
                             .text_2xl()
                             .child("flup")
-                            .child(div().text_color(rgb(theme::ACCENT)).child("·mix")),
+                            .child(div().text_color(rgb(theme::colors().accent)).child("·mix")),
                     )
                     .child(
                         button("mixer-tab", "Mixer", self.tab == Tab::Mixer).on_click(cx.listener(
@@ -194,14 +280,14 @@ impl Render for RootView {
                             .text_xs()
                             .border_1()
                             .border_color(rgb(if self.connected {
-                                theme::GREEN
+                                theme::colors().green
                             } else {
-                                theme::BORDER
+                                theme::colors().border
                             }))
                             .text_color(rgb(if self.connected {
-                                theme::GREEN
+                                theme::colors().green
                             } else {
-                                theme::TEXT_DIM
+                                theme::colors().text_dim
                             }))
                             .child(if self.connected {
                                 "● PipeWire connected"
@@ -222,7 +308,13 @@ fn open(
     initial_tab: Tab,
     cx: &mut App,
 ) -> Option<WindowHandle<RootView>> {
-    let bounds = Bounds::centered(None, size(px(1400.), px(800.)), cx);
+    let settings = model.read(cx).settings.clone();
+    let values = settings.read(cx).values;
+    let (width, height) = values
+        .window_size
+        .filter(|_| values.remember_window_size)
+        .unwrap_or((1400., 800.));
+    let bounds = Bounds::centered(None, size(px(width.max(860.)), px(height.max(650.))), cx);
     match cx.open_window(
         WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -230,7 +322,13 @@ fn open(
             app_id: Some("flupmix".into()),
             ..Default::default()
         },
-        |window, cx| cx.new(|cx| RootView::new(model.clone(), initial_tab, window, cx)),
+        |window, cx| {
+            window.on_window_should_close(cx, move |window, cx| {
+                remember_window_size(&settings, window, cx);
+                true
+            });
+            cx.new(|cx| RootView::new(model.clone(), initial_tab, window, cx))
+        },
     ) {
         Ok(window) => {
             cx.activate(true);
@@ -243,23 +341,51 @@ fn open(
     }
 }
 
+fn remember_window_size(settings: &Entity<SettingsModel>, window: &Window, cx: &mut App) {
+    let size = window.viewport_size();
+    let logical = (f32::from(size.width), f32::from(size.height));
+    let current = settings.read(cx).values;
+    if current.remember_window_size && current.window_size != Some(logical) {
+        settings.update(cx, |settings, cx| {
+            settings.change(cx, |values| values.window_size = Some(logical))
+        });
+    }
+}
+
 pub(crate) fn launch(opts: UiOptions, cx: &mut App) {
     theme::load_fonts(cx);
-    let model = cx.new(|_| MixerModel::new(opts.initial, opts.engine));
+    let settings = cx.new(|cx| SettingsModel::new(settings::load(), opts.engine.clone(), cx));
+    let model = cx.new(|_| MixerModel::new(opts.initial, opts.engine, settings.clone()));
     let tray = opts.tray;
     let has_tray = tray.is_some();
-    let window = open(&model, opts.initial_tab, cx);
+    let window = if has_tray && settings.read(cx).values.start_minimised {
+        None
+    } else {
+        open(&model, opts.initial_tab, cx)
+    };
     let save_model = model.clone();
+    let save_settings = settings.clone();
     cx.on_app_quit(move |cx| {
+        for window in cx.windows() {
+            let _ = window.update(cx, |_, window, cx| {
+                remember_window_size(&save_settings, window, cx)
+            });
+        }
+        save_settings.read(cx).save();
         save_model.read(cx).save();
         async {}
     })
     .detach();
     let close_model = model.clone();
     cx.on_window_closed(move |cx, _| {
-        close_model.read(cx).save();
-        if !has_tray && cx.windows().is_empty() {
-            cx.quit();
+        let settings = close_model.read(cx).settings.clone();
+        if !has_tray || !settings.read(cx).values.close_to_tray {
+            if cx.windows().is_empty() {
+                cx.quit();
+            }
+        } else {
+            close_model.read(cx).save();
+            settings.read(cx).save();
         }
     })
     .detach();
@@ -291,11 +417,29 @@ fn poll_tray(
                     }
                 }
                 TrayEvent::Quit => {
-                    model.read(cx).save();
                     cx.quit();
                 }
             });
         }
     })
     .detach();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn numbered_shortcuts_accept_digit_and_shifted_keys_only() {
+        for (index, key) in ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+            .into_iter()
+            .enumerate()
+        {
+            assert_eq!(shortcut_index(key), Some(index));
+        }
+        assert_eq!(shortcut_index("!"), Some(0));
+        assert_eq!(shortcut_index("("), Some(8));
+        assert_eq!(shortcut_index("0"), None);
+        assert_eq!(shortcut_index("a"), None);
+    }
 }

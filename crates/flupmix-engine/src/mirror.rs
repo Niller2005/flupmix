@@ -276,13 +276,18 @@ fn link_outputs(mirror: &Mirror, mixer: u32, dest: usize, sink_node: u32, plan: 
 
 /// Desired `target.object` per application stream node: the strip's sink
 /// `node.name`, or `None` to leave the stream on the system default.
-pub fn plan_moves(state: &MixerState, mirror: &Mirror) -> Vec<(u32, Option<String>)> {
+pub fn plan_moves(
+    state: &MixerState,
+    mirror: &Mirror,
+    routing_enabled: bool,
+) -> Vec<(u32, Option<String>)> {
     mirror
         .nodes
         .values()
         .filter(|n| n.media_class == "Stream/Output/Audio" && !n.ours())
         .map(|n| {
             let target = resolve_target(state, &app_info(n))
+                .filter(|_| routing_enabled)
                 .map(strip_node_name)
                 .filter(|name| mirror.node_by_name(name).is_some());
             (n.id, target)
@@ -491,11 +496,20 @@ mod tests {
         node(&mut m, 50, "firefox-stream", "Stream/Output/Audio");
         m.nodes.get_mut(&50).unwrap().app_name = "Firefox".into();
         assert_eq!(
-            plan_moves(&state, &m),
+            plan_moves(&state, &m, true),
             vec![(50, Some(strip_node_name(strip)))]
         );
         m.nodes.retain(|id, _| *id != 2);
-        assert_eq!(plan_moves(&state, &m), vec![(50, None)]);
+        assert_eq!(plan_moves(&state, &m, true), vec![(50, None)]);
+    }
+
+    #[test]
+    fn moves_are_all_none_when_routing_is_off() {
+        let (mut state, mut m) = fixture();
+        let strip = state.strips[0].id;
+        state.strip_mut(strip).unwrap().catch_all = true;
+        node(&mut m, 50, "s", "Stream/Output/Audio");
+        assert_eq!(plan_moves(&state, &m, false), vec![(50, None)]);
     }
 
     #[test]

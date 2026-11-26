@@ -1,12 +1,12 @@
 use std::{cell::Cell, rc::Rc};
 
-use flupmix_core::db;
+use flupmix_core::{db, settings::Settings};
 use gpui::{
     canvas, div, prelude::*, px, relative, rgb, Bounds, Context, Entity, MouseButton,
     MouseMoveEvent, MouseUpEvent, Pixels, Render, Window,
 };
 
-use crate::{app::MixerModel, theme};
+use crate::{app::MixerModel, theme, widgets::drag_gain};
 
 fn gain_at_x(x: Pixels, bounds: Bounds<Pixels>) -> f32 {
     let position = f32::from(x - bounds.origin.x) / f32::from(bounds.size.width).max(1.);
@@ -48,6 +48,10 @@ impl SendSlider {
             })
     }
 
+    fn preferences(&self, cx: &gpui::App) -> Settings {
+        self.model.read(cx).settings.read(cx).values
+    }
+
     fn set(&self, gain: f32, cx: &mut Context<Self>) {
         self.model.update(cx, |model, cx| {
             model.change(cx, |state| {
@@ -63,7 +67,8 @@ impl SendSlider {
     }
 
     fn at(&self, x: Pixels, cx: &mut Context<Self>) {
-        self.set(gain_at_x(x, self.bounds.get()), cx);
+        let snap = self.preferences(cx).snap_to_zero;
+        self.set(drag_gain(gain_at_x(x, self.bounds.get()), snap), cx);
     }
 }
 
@@ -96,9 +101,9 @@ impl Render for SendSlider {
                     .min_w_0()
                     .h(px(10.))
                     .border_1()
-                    .border_color(rgb(theme::BORDER_STRONG))
+                    .border_color(rgb(theme::colors().border_strong))
                     .rounded_sm()
-                    .bg(rgb(theme::PANEL_SUNKEN))
+                    .bg(rgb(theme::colors().panel_sunken))
                     .cursor_pointer()
                     .child(
                         canvas(
@@ -132,7 +137,7 @@ impl Render for SendSlider {
                             .top_0()
                             .h_full()
                             .w(relative(position))
-                            .bg(rgb(theme::ACCENT_DIM)),
+                            .bg(rgb(theme::colors().accent_dim)),
                     )
                     .child(
                         div()
@@ -143,14 +148,14 @@ impl Render for SendSlider {
                             .w(px(6.))
                             .h(px(14.))
                             .rounded_sm()
-                            .bg(rgb(theme::ACCENT)),
+                            .bg(rgb(theme::colors().accent)),
                     )
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
                             this.dragging = event.click_count != 2;
                             if event.click_count == 2 {
-                                this.set(0., cx);
+                                this.set(this.preferences(cx).reset_db, cx);
                             } else {
                                 this.at(event.position.x, cx);
                             }
@@ -160,7 +165,13 @@ impl Render for SendSlider {
                     .on_scroll(cx.listener(|this, event: &gpui::ScrollEvent, _, cx| {
                         let delta = f32::from(event.delta.pixel_delta(px(20.)).y);
                         if delta != 0. {
-                            this.set(this.gain(cx) + delta.signum() * 0.5, cx);
+                            let settings = this.preferences(cx);
+                            let step = if event.modifiers.shift {
+                                settings.wheel_fine_step_db
+                            } else {
+                                settings.wheel_step_db
+                            };
+                            this.set(this.gain(cx) + delta.signum() * step, cx);
                         }
                         cx.stop_propagation();
                     })),
@@ -171,7 +182,7 @@ impl Render for SendSlider {
                     .flex_none()
                     .font_family(theme::FONT_MONO)
                     .text_xs()
-                    .text_color(rgb(theme::TEXT))
+                    .text_color(rgb(theme::colors().text))
                     .child(format!("{gain:+.1}")),
             )
     }

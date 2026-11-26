@@ -1,6 +1,8 @@
 use crate::{
     app::{MixerModel, Target},
+    settings_model::SettingsModel,
     theme,
+    widgets::drag_gain,
 };
 use flupmix_core::{db, EngineHandle};
 use gpui::{
@@ -15,6 +17,7 @@ use std::{
 
 pub(crate) struct Fader {
     model: gpui::Entity<MixerModel>,
+    settings: gpui::Entity<SettingsModel>,
     target: Target,
     engine: EngineHandle,
     slot: usize,
@@ -24,7 +27,7 @@ pub(crate) struct Fader {
     dragging: bool,
     levels: [f32; 2],
     holds: [f32; 2],
-    hold_until: [Instant; 2],
+    hold_since: [Instant; 2],
     last: Instant,
     ticking: bool,
     visible: Rc<Cell<bool>>,
@@ -41,9 +44,12 @@ impl Fader {
         cx: &mut Context<Self>,
     ) -> Self {
         let engine = model.read(cx).engine.clone();
+        let settings = model.read(cx).settings.clone();
+        cx.observe(&settings, |_, _, cx| cx.notify()).detach();
         let now = Instant::now();
         Self {
             model,
+            settings,
             target,
             engine,
             slot,
@@ -53,7 +59,7 @@ impl Fader {
             dragging: false,
             levels: [-60.; 2],
             holds: [-60.; 2],
-            hold_until: [now; 2],
+            hold_since: [now; 2],
             last: now,
             ticking: false,
             visible,
@@ -71,11 +77,13 @@ impl Fader {
     fn at(&mut self, y: Pixels, cx: &mut Context<Self>) {
         let b = self.bounds.get();
         let position = 1. - f32::from(y - b.origin.y) / f32::from(b.size.height).max(1.);
-        self.set(db::db_from_pos(position), cx);
+        let snap = self.settings.read(cx).values.snap_to_zero;
+        self.set(drag_gain(db::db_from_pos(position), snap), cx);
     }
 
     fn sample(&mut self, cx: &mut Context<Self>) {
         let now = Instant::now();
+        let preferences = self.settings.read(cx).values;
         let dt = now.duration_since(self.last).as_secs_f32().min(0.1);
         self.last = now;
         let pair = if self.destination {
@@ -86,7 +94,7 @@ impl Fader {
         let mut changed = false;
         for (i, sample) in [pair.0, pair.1].into_iter().enumerate() {
             let peak = db::gain_to_db(sample).min(12.);
-            let level = peak.max(self.levels[i] - 28. * dt);
+            let level = peak.max(self.levels[i] - preferences.meter_fall_db_per_sec * dt);
             if (level - self.levels[i]).abs() > 0.01 {
                 changed = true;
             }
@@ -94,9 +102,11 @@ impl Fader {
             let previous = self.holds[i];
             if peak >= self.holds[i] {
                 self.holds[i] = peak;
-                self.hold_until[i] = now + Duration::from_millis(1500);
-            } else if now >= self.hold_until[i] {
-                self.holds[i] = self.holds[i].max(level) - 15. * dt;
+                self.hold_since[i] = now;
+            } else if now.duration_since(self.hold_since[i]).as_secs_f32()
+                >= preferences.peak_hold_secs
+            {
+                self.holds[i] = self.holds[i].max(level) - preferences.meter_fall_db_per_sec * dt;
                 self.holds[i] = self.holds[i].max(level);
             }
             changed |= (previous - self.holds[i]).abs() > 0.01;
@@ -111,21 +121,26 @@ impl Render for Fader {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.ticking {
             self.ticking = true;
+            let mut hz = self.settings.read(cx).values.meter_hz;
             cx.spawn_in(window, async move |this, cx| loop {
                 cx.background_executor()
-                    .timer(Duration::from_millis(33))
+                    .timer(Duration::from_secs_f64(1. / f64::from(hz)))
                     .await;
-                let alive = cx
+                let rate = cx
                     .update(|window, cx| {
                         this.update(cx, |this, cx| {
                             if window.is_visible() && this.visible.get() {
                                 this.sample(cx);
                             }
+                            this.settings.read(cx).values.meter_hz
                         })
-                        .is_ok()
+                        .ok()
                     })
-                    .unwrap_or(false);
-                if !alive {
+                    .ok()
+                    .flatten();
+                if let Some(rate) = rate {
+                    hz = rate;
+                } else {
                     break;
                 }
             })
@@ -135,7 +150,8 @@ impl Render for Fader {
         let weak_move = cx.weak_entity();
         let weak_up = cx.weak_entity();
         let thumb_y = 1. - db::pos_from_db(self.gain);
-        let clip = self.holds.iter().any(|p| *p > 0.);
+        let clip_db = self.settings.read(cx).values.clip_db;
+        let clip = self.holds.iter().any(|p| *p > clip_db);
         div()
             .flex_1()
             .min_h(px(344.))
@@ -149,7 +165,11 @@ impl Render for Fader {
                     .flex_none()
                     .font_family(theme::FONT_MONO)
                     .text_xs()
-                    .text_color(rgb(if clip { theme::RED } else { theme::TEXT_DIM }))
+                    .text_color(rgb(if clip {
+                        theme::colors().red
+                    } else {
+                        theme::colors().text_dim
+                    }))
                     .child(if clip { "● CLIP" } else { "● PEAK" }),
             )
             .child(
@@ -196,7 +216,7 @@ impl Render for Fader {
                             .w(px(4.))
                             .h_full()
                             .rounded_full()
-                            .bg(rgb(theme::BORDER_STRONG)),
+                            .bg(rgb(theme::colors().border_strong)),
                     )
                     .children(
                         [12., 6., 0., -6., -20., -40., -60.]
@@ -208,9 +228,9 @@ impl Render for Fader {
                                     .top(relative(1. - db::pos_from_db(tick)))
                                     .mt(px(-7.))
                                     .text_color(rgb(if tick == 0. {
-                                        theme::TEXT
+                                        theme::colors().text
                                     } else {
-                                        theme::TEXT_DIM
+                                        theme::colors().text_dim
                                     }))
                                     .font_family(theme::FONT_MONO)
                                     .text_xs()
@@ -226,13 +246,13 @@ impl Render for Fader {
                             .w(px(10.))
                             .h_full()
                             .border_1()
-                            .border_color(rgb(theme::BORDER_STRONG))
-                            .bg(rgb(theme::PANEL_SUNKEN))
+                            .border_color(rgb(theme::colors().border_strong))
+                            .bg(rgb(theme::colors().panel_sunken))
                             .children(
                                 [
-                                    (db::MIN_DB, -12., theme::GREEN),
-                                    (-12., -3., theme::ORANGE),
-                                    (-3., db::MAX_DB, theme::RED),
+                                    (db::MIN_DB, -12., theme::colors().green),
+                                    (-12., -3., theme::colors().orange),
+                                    (-3., db::MAX_DB, theme::colors().red),
                                 ]
                                 .into_iter()
                                 .map(|(low, high, color)| {
@@ -266,14 +286,14 @@ impl Render for Fader {
                             .h(px(14.))
                             .rounded_sm()
                             .border_1()
-                            .border_color(rgb(theme::ACCENT))
-                            .bg(rgb(theme::TEXT))
+                            .border_color(rgb(theme::colors().accent))
+                            .bg(rgb(theme::colors().text))
                             .child(
                                 div()
                                     .mt(px(6.))
                                     .h(px(2.))
                                     .w_full()
-                                    .bg(rgb(theme::ACCENT_DIM)),
+                                    .bg(rgb(theme::colors().accent_dim)),
                             ),
                     )
                     .on_mouse_down(
@@ -281,7 +301,7 @@ impl Render for Fader {
                         cx.listener(|this, ev: &gpui::MouseDownEvent, _, cx| {
                             this.dragging = true;
                             if ev.click_count == 2 {
-                                this.set(0., cx);
+                                this.set(this.settings.read(cx).values.reset_db, cx);
                                 this.dragging = false;
                             } else {
                                 this.at(ev.position.y, cx);
@@ -292,11 +312,13 @@ impl Render for Fader {
                     .on_scroll(cx.listener(|this, ev: &gpui::ScrollEvent, _, cx| {
                         let delta = f32::from(ev.delta.pixel_delta(px(20.)).y);
                         if delta != 0. {
-                            this.set(
-                                this.gain
-                                    + delta.signum() * if ev.modifiers.shift { 0.1 } else { 0.5 },
-                                cx,
-                            );
+                            let settings = this.settings.read(cx).values;
+                            let step = if ev.modifiers.shift {
+                                settings.wheel_fine_step_db
+                            } else {
+                                settings.wheel_step_db
+                            };
+                            this.set(this.gain + delta.signum() * step, cx);
                         }
                         cx.stop_propagation();
                     })),
@@ -306,7 +328,7 @@ impl Render for Fader {
                     .flex_none()
                     .font_family(theme::FONT_MONO)
                     .text_sm()
-                    .text_color(rgb(theme::ACCENT))
+                    .text_color(rgb(theme::colors().accent))
                     .child(format!("{:+.1} dB", self.gain)),
             )
     }

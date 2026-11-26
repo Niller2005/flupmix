@@ -112,6 +112,7 @@ struct Engine {
     context: ContextRc,
     mainloop: MainLoopRc,
     state: MixerState,
+    app_routing: bool,
     conn: Option<Conn>,
     last_published: Option<Snapshot>,
 }
@@ -128,6 +129,7 @@ fn run(shared: Arc<Shared>, commands: pw::channel::Receiver<Command>) {
         context,
         mainloop: mainloop.clone(),
         state: MixerState::empty(),
+        app_routing: true,
         conn: None,
         last_published: None,
     }));
@@ -168,6 +170,10 @@ fn handle_command(engine: &EngineRef, cmd: Command) {
         Command::SetState(state) => {
             e.controls.store(&Matrix::from_state(&state));
             e.state = *state;
+            e.request_reconcile();
+        }
+        Command::SetAppRouting(enabled) => {
+            e.app_routing = enabled;
             e.request_reconcile();
         }
         Command::Link { out_port, in_port } => e.link_ports(out_port, in_port),
@@ -565,7 +571,7 @@ impl Engine {
         }
 
         if let Some((meta, _)) = &conn.metadata {
-            for (node, target) in plan_moves(state, &conn.mirror) {
+            for (node, target) in plan_moves(state, &conn.mirror, self.app_routing) {
                 match (target, conn.moved.get(&node)) {
                     (Some(t), Some(cur)) if *cur == t => {}
                     (Some(t), _) => {

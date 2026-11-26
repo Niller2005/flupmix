@@ -146,12 +146,12 @@ impl Render for TextField {
             .rounded_sm()
             .border_1()
             .border_color(rgb(if self.editing {
-                theme::ACCENT
+                theme::colors().accent
             } else {
-                theme::BORDER
+                theme::colors().border
             }))
-            .bg(rgb(theme::PANEL_SUNKEN))
-            .text_color(rgb(theme::TEXT))
+            .bg(rgb(theme::colors().panel_sunken))
+            .text_color(rgb(theme::colors().text))
             .text_sm()
             .cursor_text()
             .overflow_x_hidden()

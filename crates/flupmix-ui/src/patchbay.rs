@@ -646,11 +646,11 @@ impl PatchbayView {
             rows[side] += 1;
             let compatible = self.target == Some(port.id);
             let color = if compatible {
-                theme::ACCENT
+                theme::colors().accent
             } else if port.monitor {
-                theme::TEXT_FAINT
+                theme::colors().text_faint
             } else {
-                theme::TEXT_DIM
+                theme::colors().text_dim
             };
             div()
                 .absolute()
@@ -669,7 +669,7 @@ impl PatchbayView {
                         .rounded_full()
                         .bg(rgb(color))
                         .when(compatible, |el| {
-                            el.border_2().border_color(rgb(theme::TEXT))
+                            el.border_2().border_color(rgb(theme::colors().text))
                         }),
                 )
                 .child(
@@ -693,11 +693,11 @@ impl PatchbayView {
             .rounded_md()
             .border_1()
             .border_color(rgb(if node.ours {
-                theme::ACCENT
+                theme::colors().accent
             } else {
-                theme::BORDER_STRONG
+                theme::colors().border_strong
             }))
-            .bg(rgb(theme::PANEL_RAISED))
+            .bg(rgb(theme::colors().panel_raised))
             .overflow_hidden()
             .child(
                 div()
@@ -706,20 +706,20 @@ impl PatchbayView {
                     .py_2()
                     .cursor_move()
                     .border_b_1()
-                    .border_color(rgb(theme::BORDER))
+                    .border_color(rgb(theme::colors().border))
                     .bg(rgb(if node.ours {
-                        theme::ACCENT_BG
+                        theme::colors().accent_bg
                     } else {
-                        theme::PANEL
+                        theme::colors().panel
                     }))
                     .child(
                         div()
                             .text_sm()
                             .font_weight(gpui::FontWeight::SEMIBOLD)
                             .text_color(rgb(if node.ours {
-                                theme::ACCENT
+                                theme::colors().accent
                             } else {
-                                theme::TEXT
+                                theme::colors().text
                             }))
                             .overflow_hidden()
                             .text_ellipsis()
@@ -732,7 +732,7 @@ impl PatchbayView {
                     .child(
                         div()
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_DIM))
+                            .text_color(rgb(theme::colors().text_dim))
                             .child(node.media_class.clone()),
                     ),
             )
@@ -751,11 +751,11 @@ impl Render for PatchbayView {
                 (
                     wire.points,
                     if Some(wire.id) == selected {
-                        theme::MAGENTA
+                        theme::colors().magenta
                     } else if wire.ours {
-                        theme::ACCENT
+                        theme::colors().accent
                     } else {
-                        theme::TEXT_FAINT
+                        theme::colors().text_faint
                     },
                     if Some(wire.id) == selected { 3.5 } else { 2.0 },
                 )
@@ -771,7 +771,7 @@ impl Render for PatchbayView {
             } else {
                 (target, port.position)
             };
-            painted.push((curve(start, end), theme::ACCENT, 2.5));
+            painted.push((curve(start, end), theme::colors().accent, 2.5));
         }
         let focused = self.search_focus.is_focused(window);
         let search = if focused {
@@ -802,19 +802,19 @@ impl Render for PatchbayView {
         };
 
         div().size_full().min_h_0().flex().flex_col().font_family(theme::FONT_UI)
-            .text_color(rgb(theme::TEXT)).bg(rgb(theme::BG))
-            .child(div().flex().items_center().gap_3().p_3().border_b_1().border_color(rgb(theme::BORDER))
+            .text_color(rgb(theme::colors().text)).bg(rgb(theme::colors().bg))
+            .child(div().flex().items_center().gap_3().p_3().border_b_1().border_color(rgb(theme::colors().border))
                 .child(div().id("patchbay-search").track_focus(&self.search_focus)
                     .w_64().h_8().px_2().flex().items_center().overflow_hidden().rounded_sm().border_1()
-                    .border_color(rgb(if focused { theme::ACCENT } else { theme::BORDER_STRONG }))
-                    .bg(rgb(theme::PANEL_SUNKEN)).text_sm().text_color(rgb(if focused || !self.query.is_empty() { theme::TEXT } else { theme::TEXT_DIM }))
+                    .border_color(rgb(if focused { theme::colors().accent } else { theme::colors().border_strong }))
+                    .bg(rgb(theme::colors().panel_sunken)).text_sm().text_color(rgb(if focused || !self.query.is_empty() { theme::colors().text } else { theme::colors().text_dim }))
                     .child(search).on_mouse_down(MouseButton::Left, cx.listener(|this, _, window, cx| {
                         window.focus(&this.search_focus, cx);
                         cx.notify();
                     })).on_key_down(cx.listener(Self::search_key)))
                 .child(div().id("patchbay-scope").px_3().py_1().rounded_sm().border_1().cursor_pointer()
-                    .border_color(rgb(if self.scoped { theme::ACCENT_DIM } else { theme::BORDER_STRONG }))
-                    .text_sm().text_color(rgb(if self.scoped { theme::ACCENT } else { theme::TEXT_DIM }))
+                    .border_color(rgb(if self.scoped { theme::colors().accent_dim } else { theme::colors().border_strong }))
+                    .text_sm().text_color(rgb(if self.scoped { theme::colors().accent } else { theme::colors().text_dim }))
                     .child(if self.scoped { "Only flupmix + connected" } else { "All nodes" })
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.scoped = !this.scoped;
@@ -824,8 +824,8 @@ impl Render for PatchbayView {
                         this.rebuild_geometry();
                         cx.notify();
                     })))
-                .child(div().id("patchbay-layout").px_3().py_1().rounded_sm().border_1().border_color(rgb(theme::BORDER_STRONG))
-                    .text_sm().cursor_pointer().hover(|el| el.bg(rgb(theme::PANEL_RAISED))).child("Auto layout")
+                .child(div().id("patchbay-layout").px_3().py_1().rounded_sm().border_1().border_color(rgb(theme::colors().border_strong))
+                    .text_sm().cursor_pointer().hover(|el| el.bg(rgb(theme::colors().panel_raised))).child("Auto layout")
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.positions.clear();
                         this.pan = Position::default();
@@ -836,7 +836,7 @@ impl Render for PatchbayView {
                         cx.notify();
                     }))))
             .child(div().id("patchbay-canvas").track_focus(&self.canvas_focus)
-                .relative().flex_1().min_h_0().w_full().overflow_hidden().bg(rgb(theme::PANEL_SUNKEN))
+                .relative().flex_1().min_h_0().w_full().overflow_hidden().bg(rgb(theme::colors().panel_sunken))
                 .child(canvas(move |area, _, _| { bounds.set(area); }, move |area, _, window, _| {
                     for (points, color, width) in painted {
                         let screen = points.map(|p| p.pixels() + area.origin);
@@ -851,7 +851,7 @@ impl Render for PatchbayView {
                 .when(empty.is_none(), |el| el.children(self.snapshot.graph.nodes.iter()
                     .filter(|node| self.visible.contains(&node.id)).map(|node| self.node_card(node))))
                 .when_some(empty, |el, message| el.child(div().absolute().inset_0().flex().items_center().justify_center()
-                    .text_color(rgb(theme::TEXT_DIM)).child(message)))
+                    .text_color(rgb(theme::colors().text_dim)).child(message)))
                 .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &gpui::MouseDownEvent, window, cx| {
                     this.pointer_down(event.position, window, cx);
                 }))
@@ -891,7 +891,7 @@ impl Render for PatchbayView {
                     }
                     cx.stop_propagation();
                 })))
-            .child(div().h_7().px_3().flex().items_center().text_xs().text_color(rgb(theme::TEXT_DIM))
+            .child(div().h_7().px_3().flex().items_center().text_xs().text_color(rgb(theme::colors().text_dim))
                 .child("Drag ports to connect · select a cable and Delete to disconnect · drag background or scroll to pan"))
     }
 }

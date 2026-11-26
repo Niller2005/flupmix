@@ -1,6 +1,7 @@
 use crate::{
     app::{MixerModel, Target},
     preset_picker::PresetPicker,
+    settings_dialog::SettingsDialog,
     theme,
     widgets::{
         button::{button, tone_button},
@@ -37,6 +38,7 @@ enum Menu {
     Sink,
     Apps(u32),
     Presets,
+    Settings,
 }
 
 pub(crate) struct MixerView {
@@ -47,6 +49,7 @@ pub(crate) struct MixerView {
     names: HashMap<Target, Entity<TextField>>,
     pattern: Entity<TextField>,
     presets: Entity<PresetPicker>,
+    settings: Entity<SettingsDialog>,
     menu: Option<Menu>,
     focus: FocusHandle,
     visible: Rc<Cell<bool>>,
@@ -65,6 +68,7 @@ impl MixerView {
                 cx,
             )
         });
+        let settings = cx.new(|cx| SettingsDialog::new(model.read(cx).settings.clone(), cx));
         cx.observe(&model, |_, _, cx| cx.notify()).detach();
         cx.spawn(async move |this, cx| loop {
             cx.background_executor()
@@ -95,6 +99,7 @@ impl MixerView {
             names: HashMap::new(),
             pattern: cx.new(|cx| TextField::new(String::new(), |_, _| {}, cx)),
             presets: preset_picker,
+            settings,
             menu: None,
             focus: cx.focus_handle(),
             visible: Rc::new(Cell::new(true)),
@@ -109,6 +114,9 @@ impl MixerView {
         if menu == Menu::Presets {
             self.presets.update(cx, |presets, cx| presets.open(cx));
         }
+        if menu == Menu::Settings {
+            self.settings.update(cx, |settings, cx| settings.open(cx));
+        }
         self.menu = Some(menu);
         self.focus.focus(window, cx);
         cx.notify();
@@ -118,7 +126,12 @@ impl MixerView {
         self.model.update(cx, |model, cx| model.change(cx, change));
     }
 
-    fn load_preset(&mut self, state: MixerState, window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn load_preset(
+        &mut self,
+        state: MixerState,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         // Cancel before dropping editors: an old name must never commit into a reused ID.
         for field in self.names.values() {
             field.update(cx, |field, cx| field.cancel(cx));
@@ -220,7 +233,7 @@ impl MixerView {
                 div()
                     .font_family(theme::FONT_MONO)
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_DIM))
+                    .text_color(rgb(theme::colors().text_dim))
                     .child("INPUTS"),
             )
             .child(button("remove-input", "−", false).on_click(cx.listener(
@@ -243,12 +256,17 @@ impl MixerView {
                     cx.listener(|this, _, window, cx| this.show(Menu::Presets, window, cx)),
                 ),
             )
+            .child(
+                button("settings", "Settings", self.menu == Some(Menu::Settings)).on_click(
+                    cx.listener(|this, _, window, cx| this.show(Menu::Settings, window, cx)),
+                ),
+            )
             .child(div().flex_1())
             .child(
                 div()
                     .font_family(theme::FONT_MONO)
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_DIM))
+                    .text_color(rgb(theme::colors().text_dim))
                     .child("BUSES"),
             )
             .child(
@@ -318,8 +336,8 @@ impl MixerView {
             .p_3()
             .rounded_lg()
             .border_1()
-            .border_color(rgb(theme::BORDER))
-            .bg(rgb(theme::PANEL))
+            .border_color(rgb(theme::colors().border))
+            .bg(rgb(theme::colors().panel))
             .child(
                 div()
                     .h_8()
@@ -339,9 +357,9 @@ impl MixerView {
                     .overflow_hidden()
                     .text_xs()
                     .text_color(rgb(if missing {
-                        theme::ORANGE
+                        theme::colors().orange
                     } else {
-                        theme::TEXT_DIM
+                        theme::colors().text_dim
                     }))
                     .when(!virtual_strip, |d| {
                         d.cursor_pointer().on_click(
@@ -364,7 +382,7 @@ impl MixerView {
                             .flex_none()
                             .font_family(theme::FONT_MONO)
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_DIM))
+                            .text_color(rgb(theme::colors().text_dim))
                             .child("HW"),
                     )
                     .child(
@@ -386,7 +404,7 @@ impl MixerView {
                             .mt_2()
                             .font_family(theme::FONT_MONO)
                             .text_xs()
-                            .text_color(rgb(theme::TEXT_DIM))
+                            .text_color(rgb(theme::colors().text_dim))
                             .child("BUS"),
                     )
                     .children(buses.into_iter().map(|(bus, name)| {
@@ -425,7 +443,7 @@ impl MixerView {
                             .flex()
                             .gap_2()
                             .child(
-                                tone_button(("mute", id), "M", strip.mute, theme::RED)
+                                tone_button(("mute", id), "M", strip.mute, theme::colors().red)
                                     .flex_1()
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.change(cx, |s| {
@@ -436,7 +454,7 @@ impl MixerView {
                                     })),
                             )
                             .child(
-                                tone_button(("solo", id), "S", strip.solo, theme::YELLOW)
+                                tone_button(("solo", id), "S", strip.solo, theme::colors().yellow)
                                     .flex_1()
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.change(cx, |s| {
@@ -457,7 +475,7 @@ impl MixerView {
                                     "APPS"
                                 },
                                 strip.catch_all,
-                                theme::PURPLE,
+                                theme::colors().purple,
                             )
                             .on_click(
                                 cx.listener(move |this, _, w, cx| this.show(Menu::Apps(id), w, cx)),
@@ -474,10 +492,10 @@ impl MixerView {
                                 .justify_center()
                                 .rounded_md()
                                 .border_1()
-                                .border_color(rgb(theme::BORDER))
+                                .border_color(rgb(theme::colors().border))
                                 .font_family(theme::FONT_MONO)
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_FAINT))
+                                .text_color(rgb(theme::colors().text_faint))
                                 .child("HARDWARE"),
                         )
                     }),
@@ -530,14 +548,14 @@ impl MixerView {
             .rounded_lg()
             .border_1()
             .border_color(rgb(if hardware {
-                theme::ACCENT
+                theme::colors().accent
             } else {
-                theme::BORDER_STRONG
+                theme::colors().border_strong
             }))
             .bg(rgb(if hardware {
-                theme::PANEL_RAISED
+                theme::colors().panel_raised
             } else {
-                theme::PANEL
+                theme::colors().panel
             }))
             .child(div().h_8().flex_none().child(name))
             .child(
@@ -548,9 +566,9 @@ impl MixerView {
                     .text_xs()
                     .font_family(theme::FONT_MONO)
                     .text_color(rgb(if sink_missing && hardware {
-                        theme::ORANGE
+                        theme::colors().orange
                     } else {
-                        theme::ACCENT
+                        theme::colors().accent
                     }))
                     .when(hardware, |d| {
                         d.cursor_pointer()
@@ -572,7 +590,7 @@ impl MixerView {
                     .gap_2()
                     .child(div().flex_1())
                     .child(
-                        tone_button(("bus-mute", slot), "M", mute, theme::RED).on_click(
+                        tone_button(("bus-mute", slot), "M", mute, theme::colors().red).on_click(
                             cx.listener(move |this, _, _, cx| {
                                 this.change(cx, |state| match target {
                                     Target::Hardware => state.hw.mute = !state.hw.mute,
@@ -653,7 +671,7 @@ impl MixerView {
                     "catch-all",
                     "Catch-all · receive unclaimed apps",
                     strip.catch_all,
-                    theme::PURPLE,
+                    theme::colors().purple,
                 )
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.change(cx, |state| {
@@ -667,14 +685,14 @@ impl MixerView {
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_DIM))
+                    .text_color(rgb(theme::colors().text_dim))
                     .child("RUNNING APPS"),
             )
             .when(running.is_empty(), |d| {
                 d.child(
                     div()
                         .text_sm()
-                        .text_color(rgb(theme::TEXT_DIM))
+                        .text_color(rgb(theme::colors().text_dim))
                         .child("No playback streams are running."),
                 )
             })
@@ -686,13 +704,13 @@ impl MixerView {
                     .items_center()
                     .gap_2()
                     .border_b_1()
-                    .border_color(rgb(theme::BORDER))
+                    .border_color(rgb(theme::colors().border))
                     .pb_2()
                     .child(
                         div().flex_1().min_w_0().child(app.name).child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_DIM))
+                                .text_color(rgb(theme::colors().text_dim))
                                 .child(format!("{} → {route}", app.binary)),
                         ),
                     )
@@ -725,7 +743,7 @@ impl MixerView {
                         .child(
                             div()
                                 .text_xs()
-                                .text_color(rgb(theme::TEXT_DIM))
+                                .text_color(rgb(theme::colors().text_dim))
                                 .child(heading),
                         )
                         .children(patterns.into_iter().enumerate().map(|(i, p)| {
@@ -759,7 +777,7 @@ impl MixerView {
             .child(
                 div()
                     .text_xs()
-                    .text_color(rgb(theme::TEXT_DIM))
+                    .text_color(rgb(theme::colors().text_dim))
                     .child("MANUAL PATTERN · binary equals / app name contains"),
             )
             .child(self.pattern.clone())
@@ -887,6 +905,7 @@ impl MixerView {
                 }
                 Menu::Apps(id) => self.apps(id, cx),
                 Menu::Presets => self.presets.clone().into_any_element(),
+                Menu::Settings => self.settings.clone().into_any_element(),
             };
         div()
             .id("mixer-modal")
@@ -901,18 +920,18 @@ impl MixerView {
                 div()
                     .id("mixer-popover")
                     .occlude()
-                    .w(px(if matches!(menu, Menu::Apps(_) | Menu::Presets) {
-                        620.
-                    } else {
-                        420.
+                    .w(px(match menu {
+                        Menu::Settings => 760.,
+                        Menu::Apps(_) | Menu::Presets => 620.,
+                        _ => 420.,
                     }))
                     .max_h(px(600.))
                     .overflow_y_scroll()
                     .p_5()
                     .rounded_lg()
                     .border_1()
-                    .border_color(rgb(theme::ACCENT_DIM))
-                    .bg(rgb(theme::PANEL_RAISED))
+                    .border_color(rgb(theme::colors().accent_dim))
+                    .bg(rgb(theme::colors().panel_raised))
                     .shadow_lg()
                     .on_mouse_down_out(cx.listener(|this, _, _, cx| {
                         this.menu = None;
@@ -1008,7 +1027,7 @@ impl Render for MixerView {
                                     .gap_3()
                                     .pl_4()
                                     .border_l_1()
-                                    .border_color(rgb(theme::BORDER_STRONG))
+                                    .border_color(rgb(theme::colors().border_strong))
                                     .child(hw)
                                     .children(buses),
                             ),

@@ -6,7 +6,7 @@ pub(crate) fn button(
     label: impl Into<gpui::SharedString>,
     active: bool,
 ) -> Stateful<Div> {
-    tone_button(id, label, active, theme::ACCENT)
+    tone_button(id, label, active, theme::colors().accent)
 }
 
 pub(crate) fn tone_button(
@@ -15,8 +15,8 @@ pub(crate) fn tone_button(
     active: bool,
     color: u32,
 ) -> Stateful<Div> {
-    let fill = if color == theme::ACCENT {
-        rgb(theme::ACCENT_BG)
+    let fill = if color == theme::colors().accent {
+        rgb(theme::colors().accent_bg)
     } else {
         rgba((color << 8) | 0x33)
     };
@@ -30,13 +30,17 @@ pub(crate) fn tone_button(
         .py_1()
         .rounded_md()
         .border_1()
-        .border_color(rgb(if active { color } else { theme::BORDER }))
+        .border_color(rgb(if active {
+            color
+        } else {
+            theme::colors().border
+        }))
         .bg(if active {
             fill
         } else {
-            rgb(theme::PANEL_RAISED)
+            rgb(theme::colors().panel_raised)
         })
-        .text_color(rgb(if active { color } else { theme::TEXT }))
+        .text_color(rgb(if active { color } else { theme::colors().text }))
         .text_xs()
         .font_family(theme::FONT_MONO)
         .cursor_pointer()

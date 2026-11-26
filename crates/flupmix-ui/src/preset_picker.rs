@@ -135,23 +135,23 @@ impl Render for PresetPicker {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let overwriting = matches!(self.confirmation, Some(Confirmation::Overwrite(_)));
         div().flex().flex_col().gap_3()
-            .child(div().font_family(theme::FONT_MONO).text_color(rgb(theme::ACCENT)).child("PRESETS"))
-            .child(div().text_sm().text_color(rgb(theme::TEXT_DIM)).child("Preset name"))
+            .child(div().font_family(theme::FONT_MONO).text_color(rgb(theme::colors().accent)).child("PRESETS"))
+            .child(div().text_sm().text_color(rgb(theme::colors().text_dim)).child("Preset name"))
             .child(div().flex().items_center().gap_2()
                 .child(div().flex_1().min_w_0().child(self.name.clone()))
-                .child(tone_button("save-preset", if overwriting { "Overwrite?" } else { "Save" }, overwriting, theme::ORANGE)
+                .child(tone_button("save-preset", if overwriting { "Overwrite?" } else { "Save" }, overwriting, theme::colors().orange)
                     .on_click(cx.listener(|this, _, _, cx| this.save(cx)))))
-            .children(self.error.as_ref().map(|error| div().text_sm().text_color(rgb(theme::RED)).child(error.clone())))
+            .children(self.error.as_ref().map(|error| div().text_sm().text_color(rgb(theme::colors().red)).child(error.clone())))
             .child(div().id("saved-presets").h(px(300.)).overflow_y_scroll().flex().flex_col().gap_2()
-                .when(self.names.is_empty(), |list| list.child(div().text_sm().text_color(rgb(theme::TEXT_DIM)).child("No presets yet")))
+                .when(self.names.is_empty(), |list| list.child(div().text_sm().text_color(rgb(theme::colors().text_dim)).child("No presets yet")))
                 .children(self.names.iter().enumerate().map(|(index, name)| {
                     let deleting = matches!(self.confirmation.as_ref(), Some(Confirmation::Delete(pending)) if pending == name);
                     let load_name: gpui::SharedString = name.clone().into();
                     let delete_name = load_name.clone();
-                    div().flex_none().flex().items_center().gap_2().py_2().border_b_1().border_color(rgb(theme::BORDER))
+                    div().flex_none().flex().items_center().gap_2().py_2().border_b_1().border_color(rgb(theme::colors().border))
                         .child(div().flex_1().min_w_0().overflow_hidden().text_ellipsis().child(load_name.clone()))
                         .child(button(("load-preset", index), "Load", false).on_click(cx.listener(move |this, _, window, cx| this.load(&load_name, window, cx))))
-                        .child(tone_button(("delete-preset", index), if deleting { "Delete?" } else { "Delete" }, deleting, theme::RED)
+                        .child(tone_button(("delete-preset", index), if deleting { "Delete?" } else { "Delete" }, deleting, theme::colors().red)
                             .on_click(cx.listener(move |this, _, _, cx| this.delete(&delete_name, cx))))
                 })))
     }

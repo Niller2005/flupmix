@@ -8,6 +8,7 @@ Think jack_mixer for the mixing and qpwgraph for the patching, in one window.
 * **Buses**: one hardware bus (follows the system default sink, or any sink you pick) and up to eight virtual buses that show up in other apps as microphones (`Audio/Source/Virtual`), e.g. for OBS or Discord.
 * Every strip has a fader (-60..+12 dB), mute, global solo, peak meter, a send to the hardware bus and a send to each virtual bus.
 * **App routing without lists of every game**: mark one virtual strip as *catch-all* and only list the exceptions. Each strip has an *assigned* list and a *blocked* list (for example block Spotify on Game and assign it to Music). Matching is by process binary or application name.
+* **Settings** dialog: tray and autostart behaviour, meters, fader feel, palette, window size, shortcuts. Stored in `~/.config/flupmix/settings.toml`.
 * **Presets**: save and recall the whole mixer by name (`~/.config/flupmix/presets/`).
 * **Patchbay** tab: a qpwgraph-like view of the whole PipeWire graph with drag-to-link and click-to-unlink.
 * Settings persist in `~/.config/flupmix/config.toml`. Closing the window keeps the mixer running in the system tray (StatusNotifierItem). Without a tray host, closing the window quits.

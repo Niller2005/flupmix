@@ -76,6 +76,8 @@ pub struct Snapshot {
 pub enum Command {
     /// Make the audio graph match this mixer.
     SetState(Box<MixerState>),
+    /// Turn application-stream routing on or off (off hands apps back to the system default).
+    SetAppRouting(bool),
     /// Patchbay: link two ports.
     Link { out_port: u32, in_port: u32 },
     /// Patchbay: remove a link.

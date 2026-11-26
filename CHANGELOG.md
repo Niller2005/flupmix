@@ -7,6 +7,9 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+### Added
+- Settings dialog (live apply, stored in `~/.config/flupmix/settings.toml`): close to tray, start minimised, launch at login, app routing on/off, meter refresh/hold/fall-off/clip level, fader wheel step/reset level/snap to 0 dB, colour palette (Cyberdream high contrast, Cyberdream, Mint), remember window size, keyboard shortcuts (Alt+1..9 mute strip, Ctrl+Shift+1..9 load preset).
+
 ## [0.3.1] - 2026-11-26
 
 ### Fixed
