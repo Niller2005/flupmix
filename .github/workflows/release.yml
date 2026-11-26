@@ -1,25 +1,27 @@
 name: Release
 
 # Push a tag like v0.1.0 (matching the workspace version and a CHANGELOG.md
-# section) to build the Linux binary and publish a GitHub release.
+# section). Jobs: meta -> ci (reusable) -> tarball + appimage -> publish.
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+*']
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  release:
+  meta:
+    name: Check tag, version and changelog
     runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v7
-
-      - name: Check tag, version and changelog
-        id: meta
+      - id: meta
         run: |
           tag="${GITHUB_REF_NAME}"
           version="${tag#v}"
@@ -38,26 +40,32 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Install system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends build-essential pkg-config clang cmake libpipewire-0.3-dev libspa-0.2-dev libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libx11-xcb-dev libxcb1-dev libxcb-xkb-dev libfontconfig-dev libfreetype-dev libvulkan-dev libasound2-dev libssl-dev libzstd-dev
-      - uses: dtolnay/rust-toolchain@stable
-      # Tag runs can only read caches saved on the default branch, so share
-      # CI's key and never save from a tag (tag-scoped caches are never reused).
-      - uses: Swatinem/rust-cache@v2
+          case "$version" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;; esac
+      - uses: actions/upload-artifact@v4
         with:
-          shared-key: build
-          save-if: false
+          name: release-notes
+          path: release-notes.md
+          retention-days: 1
 
-      - run: cargo test --workspace
-      - run: cargo build --release --locked -p flupmix
+  ci:
+    name: CI
+    needs: meta
+    uses: ./.github/workflows/ci.yml
 
+  tarball:
+    name: Tarball
+    needs: ci
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: flupmix-binary
+          path: target/release
       - name: Package
-        id: pkg
         run: |
           name="flupmix-${GITHUB_REF_NAME}-x86_64-linux"
+          chmod +x target/release/flupmix
           mkdir -p "dist/$name/assets"
           cp target/release/flupmix "dist/$name/flupmix"
           strip "dist/$name/flupmix"
@@ -65,24 +73,53 @@ jobs:
           cp assets/flupmix.svg assets/flupmix.desktop "dist/$name/assets/"
           tar -C dist -czf "dist/$name.tar.gz" "$name"
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
-          echo "archive=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
-
-      - name: Build AppImage
-        id: appimage
-        run: |
-          packaging/appimage.sh "${GITHUB_REF_NAME}" dist
-          img="dist/flupmix-${GITHUB_REF_NAME}-x86_64.AppImage"
-          (cd dist && sha256sum "$(basename "$img")" > "$(basename "$img").sha256")
-          echo "image=$img" >> "$GITHUB_OUTPUT"
-
-      - name: Publish release
-        uses: softprops/action-gh-release@v3
+          rm -rf "dist/$name"
+      - uses: actions/upload-artifact@v4
         with:
-          name: flupmix ${{ steps.meta.outputs.version }}
+          name: dist-tarball
+          path: dist/*
+          retention-days: 1
+
+  appimage:
+    name: AppImage
+    needs: ci
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with:
+          name: flupmix-binary
+          path: target/release
+      - name: Build AppImage
+        run: |
+          chmod +x target/release/flupmix
+          packaging/appimage.sh "${GITHUB_REF_NAME}" dist
+          img="flupmix-${GITHUB_REF_NAME}-x86_64.AppImage"
+          (cd dist && sha256sum "$img" > "$img.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-appimage
+          path: dist/*
+          retention-days: 1
+
+  publish:
+    name: Publish release
+    needs: [meta, tarball, appimage]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes
+      - uses: softprops/action-gh-release@v3
+        with:
+          name: flupmix ${{ needs.meta.outputs.version }}
           body_path: release-notes.md
-          prerelease: ${{ contains(steps.meta.outputs.version, '-') }}
-          files: |
-            ${{ steps.pkg.outputs.archive }}
-            ${{ steps.pkg.outputs.archive }}.sha256
-            ${{ steps.appimage.outputs.image }}
-            ${{ steps.appimage.outputs.image }}.sha256
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
+          files: dist/*

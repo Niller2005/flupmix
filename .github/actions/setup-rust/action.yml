@@ -1,0 +1,31 @@
+name: Set up Rust build environment
+description: System libraries, the Rust toolchain and the shared build cache.
+
+inputs:
+  components:
+    description: Extra toolchain components (comma separated)
+    default: ''
+  save-cache:
+    description: Save the cache after the job. Only enable on the default branch.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Install system libraries
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends build-essential pkg-config clang cmake \
+          libpipewire-0.3-dev libspa-0.2-dev libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev \
+          libx11-xcb-dev libxcb1-dev libxcb-xkb-dev libfontconfig-dev libfreetype-dev \
+          libvulkan-dev libasound2-dev libssl-dev libzstd-dev
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: ${{ inputs.components }}
+    # Tag runs can only read caches saved on the default branch, and tag-scoped
+    # caches are never reused, so every job shares one key and only main saves.
+    - uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: build
+        save-if: ${{ inputs.save-cache }}
