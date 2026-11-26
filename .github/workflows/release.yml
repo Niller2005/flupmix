@@ -119,7 +119,7 @@ jobs:
           name: release-notes
       - uses: softprops/action-gh-release@v3
         with:
-          name: flupmix ${{ needs.meta.outputs.version }}
+          name: v${{ needs.meta.outputs.version }}
           body_path: release-notes.md
           prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
           files: dist/*
