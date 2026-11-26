@@ -9,6 +9,7 @@ pub(crate) struct TextField {
     cursor: usize,
     focus: FocusHandle,
     editing: bool,
+    placeholder: &'static str,
     commit: Commit,
 }
 
@@ -25,7 +26,17 @@ impl TextField {
             focus: cx.focus_handle(),
             editing: false,
             commit: Box::new(commit),
+            placeholder: "Type pattern…",
         }
+    }
+
+    pub(crate) fn placeholder(mut self, placeholder: &'static str) -> Self {
+        self.placeholder = placeholder;
+        self
+    }
+
+    pub(crate) fn cancel(&mut self, cx: &mut Context<Self>) {
+        self.finish(false, cx);
     }
 
     pub(crate) fn value(&self) -> &str {
@@ -36,6 +47,7 @@ impl TextField {
         self.text.clear();
         self.original.clear();
         self.cursor = 0;
+        self.editing = false;
         cx.notify();
     }
 
@@ -120,7 +132,7 @@ impl Render for TextField {
                 &self.text[self.cursor..]
             )
         } else if self.text.is_empty() {
-            "Type pattern…".into()
+            self.placeholder.into()
         } else {
             self.text.clone()
         };

@@ -1,5 +1,6 @@
 use crate::{
     app::{MixerModel, Target},
+    preset_picker::PresetPicker,
     theme,
     widgets::{
         button::{button, tone_button},
@@ -10,7 +11,7 @@ use crate::{
 };
 use flupmix_core::{
     mix::{MAX_BUSES, MAX_STRIPS},
-    rules, Snapshot, StripSource,
+    rules, MixerState, Snapshot, StripSource,
 };
 use gpui::{
     div, prelude::*, px, rgb, App, Context, Entity, FocusHandle, IntoElement, Render, Window,
@@ -35,6 +36,7 @@ enum Menu {
     Source(u32),
     Sink,
     Apps(u32),
+    Presets,
 }
 
 pub(crate) struct MixerView {
@@ -44,6 +46,7 @@ pub(crate) struct MixerView {
     send_sliders: HashMap<(u32, Option<u32>), Entity<SendSlider>>,
     names: HashMap<Target, Entity<TextField>>,
     pattern: Entity<TextField>,
+    presets: Entity<PresetPicker>,
     menu: Option<Menu>,
     focus: FocusHandle,
     visible: Rc<Cell<bool>>,
@@ -52,6 +55,16 @@ pub(crate) struct MixerView {
 impl MixerView {
     pub(crate) fn new(model: Entity<MixerModel>, cx: &mut Context<Self>) -> Self {
         let snapshot = model.read(cx).engine.shared.snapshot();
+        let view = cx.weak_entity();
+        let preset_picker = cx.new(|cx| {
+            PresetPicker::new(
+                model.clone(),
+                move |state, window, cx| {
+                    let _ = view.update(cx, |view, cx| view.load_preset(state, window, cx));
+                },
+                cx,
+            )
+        });
         cx.observe(&model, |_, _, cx| cx.notify()).detach();
         cx.spawn(async move |this, cx| loop {
             cx.background_executor()
@@ -81,6 +94,7 @@ impl MixerView {
             send_sliders: HashMap::new(),
             names: HashMap::new(),
             pattern: cx.new(|cx| TextField::new(String::new(), |_, _| {}, cx)),
+            presets: preset_picker,
             menu: None,
             focus: cx.focus_handle(),
             visible: Rc::new(Cell::new(true)),
@@ -92,6 +106,9 @@ impl MixerView {
     }
 
     fn show(&mut self, menu: Menu, window: &mut Window, cx: &mut Context<Self>) {
+        if menu == Menu::Presets {
+            self.presets.update(cx, |presets, cx| presets.open(cx));
+        }
         self.menu = Some(menu);
         self.focus.focus(window, cx);
         cx.notify();
@@ -99,6 +116,21 @@ impl MixerView {
 
     fn change(&self, cx: &mut App, change: impl FnOnce(&mut flupmix_core::MixerState)) {
         self.model.update(cx, |model, cx| model.change(cx, change));
+    }
+
+    fn load_preset(&mut self, state: MixerState, window: &mut Window, cx: &mut Context<Self>) {
+        // Cancel before dropping editors: an old name must never commit into a reused ID.
+        for field in self.names.values() {
+            field.update(cx, |field, cx| field.cancel(cx));
+        }
+        self.names.clear();
+        self.faders.clear();
+        self.send_sliders.clear();
+        self.pattern.update(cx, |pattern, cx| pattern.clear(cx));
+        self.menu = None;
+        self.change(cx, |current| *current = state);
+        self.focus.focus(window, cx);
+        cx.notify();
     }
 
     fn name(&mut self, target: Target, text: &str, cx: &mut Context<Self>) -> Entity<TextField> {
@@ -205,6 +237,11 @@ impl MixerView {
                         this.show(Menu::AddStrip, w, cx);
                     }
                 })),
+            )
+            .child(
+                button("presets", "Presets", self.menu == Some(Menu::Presets)).on_click(
+                    cx.listener(|this, _, window, cx| this.show(Menu::Presets, window, cx)),
+                ),
             )
             .child(div().flex_1())
             .child(
@@ -849,6 +886,7 @@ impl MixerView {
                         .into_any_element()
                 }
                 Menu::Apps(id) => self.apps(id, cx),
+                Menu::Presets => self.presets.clone().into_any_element(),
             };
         div()
             .id("mixer-modal")
@@ -863,7 +901,7 @@ impl MixerView {
                 div()
                     .id("mixer-popover")
                     .occlude()
-                    .w(px(if matches!(menu, Menu::Apps(_)) {
+                    .w(px(if matches!(menu, Menu::Apps(_) | Menu::Presets) {
                         620.
                     } else {
                         420.

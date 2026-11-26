@@ -6,6 +6,7 @@ pub mod config;
 pub mod db;
 pub mod mix;
 pub mod model;
+pub mod presets;
 pub mod rules;
 pub mod shared;
 

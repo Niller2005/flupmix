@@ -1,6 +1,7 @@
 mod app;
 mod mixer_view;
 pub mod patchbay;
+mod preset_picker;
 pub mod theme;
 mod widgets;
 
