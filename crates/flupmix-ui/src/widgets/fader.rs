@@ -4,9 +4,9 @@ use crate::{
     theme,
     widgets::drag_gain,
 };
-use flupmix_core::{db, EngineHandle};
+use flupmix_core::{db, settings::MeterStyle, EngineHandle};
 use gpui::{
-    canvas, div, prelude::*, px, relative, rgb, Bounds, Context, MouseButton, MouseMoveEvent,
+    canvas, div, prelude::*, px, relative, rgb, Bounds, Context, Div, MouseButton, MouseMoveEvent,
     MouseUpEvent, Pixels, Render, Window,
 };
 use std::{
@@ -152,6 +152,7 @@ impl Render for Fader {
         let thumb_y = 1. - db::pos_from_db(self.gain);
         let clip_db = self.settings.read(cx).values.clip_db;
         let clip = self.holds.iter().any(|p| *p > clip_db);
+        let led = self.settings.read(cx).values.meter_style == MeterStyle::Led;
         div()
             .flex_1()
             .min_h(px(344.))
@@ -248,33 +249,22 @@ impl Render for Fader {
                             .border_1()
                             .border_color(rgb(theme::colors().border_strong))
                             .bg(rgb(theme::colors().panel_sunken))
-                            .children(
-                                [
-                                    (db::MIN_DB, -12., theme::colors().green),
-                                    (-12., -3., theme::colors().orange),
-                                    (-3., db::MAX_DB, theme::colors().red),
-                                ]
-                                .into_iter()
-                                .map(|(low, high, color)| {
-                                    let bottom = db::pos_from_db(low);
-                                    let top = db::pos_from_db(self.levels[i].clamp(low, high));
+                            .children(if led {
+                                led_segments(self.levels[i], self.holds[i])
+                            } else {
+                                bar_segments(self.levels[i])
+                            })
+                            .when(!led, |track| {
+                                track.child(
                                     div()
                                         .absolute()
-                                        .bottom(relative(bottom))
+                                        .top(relative(hold_y))
+                                        .mt(px(-1.))
                                         .w_full()
-                                        .h(relative(top - bottom))
-                                        .bg(rgb(color))
-                                }),
-                            )
-                            .child(
-                                div()
-                                    .absolute()
-                                    .top(relative(hold_y))
-                                    .mt(px(-1.))
-                                    .w_full()
-                                    .h(px(2.))
-                                    .bg(gpui::white()),
-                            )
+                                        .h(px(2.))
+                                        .bg(gpui::white()),
+                                )
+                            })
                     }))
                     .child(
                         div()
@@ -332,4 +322,74 @@ impl Render for Fader {
                     .child(format!("{:+.1} dB", self.gain)),
             )
     }
+}
+
+const LED_SEGMENTS: usize = 36;
+
+fn zone_color(db: f32) -> u32 {
+    let colors = theme::colors();
+    if db >= -3. {
+        colors.red
+    } else if db >= -12. {
+        colors.orange
+    } else {
+        colors.green
+    }
+}
+
+fn bar_segments(level: f32) -> Vec<Div> {
+    [
+        (db::MIN_DB, -12., theme::colors().green),
+        (-12., -3., theme::colors().orange),
+        (-3., db::MAX_DB, theme::colors().red),
+    ]
+    .into_iter()
+    .map(|(low, high, color)| {
+        let bottom = db::pos_from_db(low);
+        let top = db::pos_from_db(level.clamp(low, high));
+        div()
+            .absolute()
+            .bottom(relative(bottom))
+            .w_full()
+            .h(relative(top - bottom))
+            .bg(rgb(color))
+    })
+    .collect()
+}
+
+/// A ladder of equal-height LEDs along the fader taper: lit up to the level,
+/// with the held peak shown as one extra lit segment.
+fn led_segments(level: f32, hold: f32) -> Vec<Div> {
+    let step = 1. / LED_SEGMENTS as f32;
+    let level_pos = db::pos_from_db(level);
+    let hold_segment = (db::pos_from_db(hold) / step) as usize;
+    (0..LED_SEGMENTS)
+        .map(|k| {
+            let low = k as f32 * step;
+            let color = zone_color(db::db_from_pos(low + step / 2.));
+            let lit = level_pos >= low + step / 2. || (k == hold_segment && hold > db::MIN_DB + 1.);
+            div()
+                .absolute()
+                .bottom(relative(low))
+                .w_full()
+                .h(relative(step))
+                .py(px(1.))
+                .child(
+                    div()
+                        .size_full()
+                        .bg(rgb(if lit { color } else { dim(color) })),
+                )
+        })
+        .collect()
+}
+
+/// An unlit LED: the zone colour at about 18% over the dark track.
+fn dim(color: u32) -> u32 {
+    let base = theme::colors().panel_sunken;
+    let mix = |shift: u32| {
+        let c = (color >> shift) & 0xff;
+        let b = (base >> shift) & 0xff;
+        (b * 82 + c * 18) / 100
+    };
+    (mix(16) << 16) | (mix(8) << 8) | mix(0)
 }

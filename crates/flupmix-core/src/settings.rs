@@ -37,6 +37,27 @@ impl Palette {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MeterStyle {
+    /// Continuous bar.
+    #[default]
+    Bar,
+    /// Segmented LED ladder.
+    Led,
+}
+
+impl MeterStyle {
+    pub const ALL: [MeterStyle; 2] = [MeterStyle::Bar, MeterStyle::Led];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            MeterStyle::Bar => "Bar",
+            MeterStyle::Led => "LED",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -50,6 +71,7 @@ pub struct Settings {
     pub app_routing: bool,
     /// Meter refresh rate in Hz (30 or 60).
     pub meter_hz: u32,
+    pub meter_style: MeterStyle,
     /// Seconds a meter peak marker is held.
     pub peak_hold_secs: f32,
     /// Meter fall-off in dB per second.
@@ -81,6 +103,7 @@ impl Default for Settings {
             autostart: false,
             app_routing: true,
             meter_hz: 30,
+            meter_style: MeterStyle::default(),
             peak_hold_secs: 1.5,
             meter_fall_db_per_sec: 24.0,
             clip_db: 0.0,

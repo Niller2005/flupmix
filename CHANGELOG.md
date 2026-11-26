@@ -7,6 +7,9 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+### Added
+- Meter style setting: continuous bar or segmented LED ladder.
+
 ## [0.4.1] - 2026-11-26
 
 ### Changed

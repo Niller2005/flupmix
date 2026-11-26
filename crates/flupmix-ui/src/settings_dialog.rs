@@ -1,6 +1,6 @@
 //! Content-only live settings editor; the shell owns modal dismissal.
 
-use flupmix_core::settings::{self, Palette, Settings};
+use flupmix_core::settings::{self, MeterStyle, Palette, Settings};
 use gpui::{div, prelude::*, rgb, Context, Div, Entity, Render, Window};
 
 use crate::{settings_model::SettingsModel, theme, widgets::button::button};
@@ -200,6 +200,22 @@ impl SettingsDialog {
         })))
     }
 
+    fn meter_style(&self, cx: &Context<Self>) -> Div {
+        let style = self.settings.read(cx).values.meter_style;
+        row("Meter style").child(div().flex().gap_1().children(MeterStyle::ALL.map(|option| {
+            button(
+                ("settings-meter-style", option as usize),
+                option.label(),
+                style == option,
+            )
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.settings.update(cx, |settings, cx| {
+                    settings.change(cx, |values| values.meter_style = option);
+                });
+            }))
+        })))
+    }
+
     fn appearance(&self, cx: &Context<Self>) -> Div {
         let selected = self.settings.read(cx).values.palette;
         section("Appearance").child(div().flex().flex_wrap().gap_1().children(Palette::ALL.map(
@@ -272,6 +288,7 @@ impl Render for SettingsDialog {
                     )))
                     .child(
                         section("Meters")
+                            .child(self.meter_style(cx))
                             .child(self.meter_rate(cx))
                             .child(self.number_row("Peak hold", Number::PeakHold, cx))
                             .child(self.number_row("Fall-off", Number::MeterFall, cx))
