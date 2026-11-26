@@ -7,6 +7,9 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+### Fixed
+- AppImage now ships a valid PNG `.DirIcon`.
+
 ## [0.2.0] - 2026-11-26
 
 ### Added

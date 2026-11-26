@@ -17,7 +17,7 @@ install -Dm644 "$root/assets/flupmix.svg" "$appdir/flupmix.svg"
 install -Dm644 "$root/assets/flupmix.svg" "$appdir/usr/share/icons/hicolor/scalable/apps/flupmix.svg"
 install -Dm644 "$root/assets/flupmix.desktop" "$appdir/flupmix.desktop"
 install -Dm644 "$root/assets/flupmix.desktop" "$appdir/usr/share/applications/flupmix.desktop"
-ln -s flupmix.svg "$appdir/.DirIcon"
+install -Dm644 "$root/assets/flupmix.png" "$appdir/.DirIcon"
 cat > "$appdir/AppRun" <<'RUN'
 #!/bin/sh
 here="$(dirname "$(readlink -f "$0")")"
