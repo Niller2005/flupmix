@@ -1,0 +1,46 @@
+# Maintainer: Niller2005 <https://github.com/Niller2005>
+pkgname=flupmix
+pkgver=0.5.0
+pkgrel=1
+pkgdesc='Voicemeeter-style audio mixer for PipeWire with a GPUI interface'
+arch=('x86_64')
+url='https://github.com/Niller2005/flupmix'
+license=('MIT')
+depends=('pipewire' 'libxkbcommon' 'libxkbcommon-x11' 'wayland' 'libxcb'
+         'vulkan-icd-loader' 'fontconfig' 'freetype2' 'gcc-libs' 'glibc')
+makedepends=('cargo' 'clang' 'cmake' 'pkgconf')
+optdepends=('libappindicator-gtk3: tray support on some desktops')
+options=('!lto' '!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('627847d33e8e6b7e33d8d6fb5c81f08ac37e890d2e75ef8463139d96fb4e5316')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  # gpui is a git dependency, so sources are fetched here (the only network step).
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release -p flupmix
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo test --frozen --workspace
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 target/release/flupmix "$pkgdir/usr/bin/flupmix"
+  install -Dm644 assets/flupmix.desktop "$pkgdir/usr/share/applications/flupmix.desktop"
+  install -Dm644 assets/flupmix.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/flupmix.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 assets/fonts/IBMPlexSans-LICENSE.txt "$pkgdir/usr/share/licenses/$pkgname/IBMPlexSans-LICENSE.txt"
+  install -Dm644 assets/fonts/Lilex-OFL.txt "$pkgdir/usr/share/licenses/$pkgname/Lilex-OFL.txt"
+}

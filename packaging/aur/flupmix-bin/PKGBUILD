@@ -1,0 +1,25 @@
+# Maintainer: Niller2005 <https://github.com/Niller2005>
+pkgname=flupmix-bin
+pkgver=0.5.0
+pkgrel=1
+pkgdesc='Voicemeeter-style audio mixer for PipeWire with a GPUI interface (prebuilt)'
+arch=('x86_64')
+url='https://github.com/Niller2005/flupmix'
+license=('MIT')
+depends=('pipewire' 'libxkbcommon' 'libxkbcommon-x11' 'wayland' 'libxcb'
+         'vulkan-icd-loader' 'fontconfig' 'freetype2' 'gcc-libs' 'glibc')
+optdepends=('libappindicator-gtk3: tray support on some desktops')
+provides=('flupmix')
+conflicts=('flupmix')
+options=('!strip' '!debug')
+_dir="flupmix-v$pkgver-x86_64-linux"
+source=("$url/releases/download/v$pkgver/$_dir.tar.gz")
+sha256sums=('fea33f35bd217d13c9881db02546cf7d59c435baa529066f9b123c1ad4bd8344')
+
+package() {
+  cd "$_dir"
+  install -Dm755 flupmix "$pkgdir/usr/bin/flupmix"
+  install -Dm644 assets/flupmix.desktop "$pkgdir/usr/share/applications/flupmix.desktop"
+  install -Dm644 assets/flupmix.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/flupmix.svg"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
