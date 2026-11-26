@@ -21,5 +21,5 @@ First release.
 - TOML persistence in `~/.config/flupmix/config.toml`, system tray (StatusNotifierItem) with keep-running on window close.
 - Desktop entry, icon and `install.sh` for per-user installation.
 
-[Unreleased]: https://github.com/OWNER/flupmix/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/OWNER/flupmix/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Niller2005/flupmix/releases/tag/v0.1.0
