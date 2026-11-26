@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="140" viewBox="0 0 1200 140" role="img" aria-labelledby="title desc">
+  <title id="title">Install</title>
+  <desc id="desc">prebuilt AppImage, tarball, or build from source</desc>
+  <rect width="1200" height="140" rx="18" fill="#000000"/>
+  <rect x="0.5" y="0.5" width="1199" height="139" rx="17.5" fill="none" stroke="#3c4048"/>
+  <text x="56" y="76" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="20" letter-spacing="2" fill="#5ef1ff">02</text>
+  <text x="108" y="82" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="-0.5" fill="#ffffff">Install</text>
+  <text x="108" y="114" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18" fill="#8d96a8">prebuilt AppImage, tarball, or build from source</text>
+  <g><rect x="1004" y="30" width="22" height="80" rx="6" fill="#0b0c0f" stroke="#3c4048"/><rect x="1018" y="74" width="5" height="32" rx="2" fill="#5eff6c"/><rect x="1008" y="63" width="10" height="7" rx="2" fill="#ffffff"/><rect x="1038" y="30" width="22" height="80" rx="6" fill="#0b0c0f" stroke="#3c4048"/><rect x="1052" y="55" width="5" height="51" rx="2" fill="#5eff6c"/><rect x="1042" y="57" width="10" height="7" rx="2" fill="#ffffff"/><rect x="1072" y="30" width="22" height="80" rx="6" fill="#0b0c0f" stroke="#3c4048"/><rect x="1086" y="84" width="5" height="22" rx="2" fill="#5eff6c"/><rect x="1076" y="66" width="10" height="7" rx="2" fill="#ffffff"/><rect x="1106" y="30" width="22" height="80" rx="6" fill="#0b0c0f" stroke="#3c4048"/><rect x="1120" y="64" width="5" height="42" rx="2" fill="#5eff6c"/><rect x="1110" y="60" width="10" height="7" rx="2" fill="#ffffff"/></g>
+
+</svg>
