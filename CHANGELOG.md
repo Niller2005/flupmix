@@ -7,6 +7,8 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-26
+
 ### Added
 - Settings dialog (live apply, stored in `~/.config/flupmix/settings.toml`): close to tray, start minimised, launch at login, app routing on/off, meter refresh/hold/fall-off/clip level, fader wheel step/reset level/snap to 0 dB, colour palette (Cyberdream high contrast, Cyberdream, Mint), remember window size, keyboard shortcuts (Alt+1..9 mute strip, Ctrl+Shift+1..9 load preset).
 
@@ -48,7 +50,8 @@ First release.
 - TOML persistence in `~/.config/flupmix/config.toml`, system tray (StatusNotifierItem) with keep-running on window close.
 - Desktop entry, icon and `install.sh` for per-user installation.
 
-[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Niller2005/flupmix/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Niller2005/flupmix/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Niller2005/flupmix/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Niller2005/flupmix/compare/v0.1.0...v0.2.0
