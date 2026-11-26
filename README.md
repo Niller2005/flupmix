@@ -91,11 +91,14 @@ and prints meters, which helps when debugging.
 | `flupmix-ui` | The GPUI interface. |
 | `flupmix` | The binary that wires everything together, plus the system tray. |
 
-To release: move the *Unreleased* entries in `CHANGELOG.md` into a new
-`## [x.y.z] - date` section, bump `version` in the workspace `Cargo.toml`, and
-push a tag `vx.y.z`. The release workflow checks that all three agree, builds,
-tests, and publishes the tarball and AppImage with that changelog section as the
-release notes.
+To release: add entries under `## [Unreleased]` in `CHANGELOG.md`, then run the
+**Prepare release** workflow from the Actions tab with the new version. It rolls
+the changelog, bumps `Cargo.toml` and `Cargo.lock`, commits to `main` and pushes
+the `vX.Y.Z` tag. The release workflow then runs CI and publishes the tarball and
+AppImage with that changelog section as the release notes. Prepare release needs
+a `RELEASE_TOKEN` repository secret (a fine-grained token with *Contents:
+read and write*), because pushes made with the default token don't start other
+workflows. You can also do the same steps by hand and push the tag yourself.
 
 </details>
 
