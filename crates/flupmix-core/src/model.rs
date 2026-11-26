@@ -37,6 +37,12 @@ pub struct Strip {
     pub hw: bool,
     /// Virtual buses this strip feeds.
     pub buses: Vec<BusId>,
+    /// Level of the send to the hardware bus.
+    #[serde(default)]
+    pub hw_db: f32,
+    /// Levels of the sends to virtual buses; a bus without an entry is at 0 dB.
+    #[serde(default)]
+    pub send_db: Vec<BusSend>,
     /// Virtual strips only: takes every app that no strip claims explicitly.
     #[serde(default)]
     pub catch_all: bool,
@@ -46,6 +52,29 @@ pub struct Strip {
     /// Virtual strips only: apps that may never be routed here.
     #[serde(default)]
     pub blocked: Vec<AppMatch>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BusSend {
+    pub bus: BusId,
+    pub db: f32,
+}
+
+impl Strip {
+    pub fn bus_send_db(&self, bus: BusId) -> f32 {
+        self.send_db
+            .iter()
+            .find(|s| s.bus == bus)
+            .map_or(0.0, |s| s.db)
+    }
+
+    pub fn set_bus_send_db(&mut self, bus: BusId, db: f32) {
+        let db = db.clamp(MIN_DB, MAX_DB);
+        match self.send_db.iter_mut().find(|s| s.bus == bus) {
+            Some(s) => s.db = db,
+            None => self.send_db.push(BusSend { bus, db }),
+        }
+    }
 }
 
 /// A virtual bus, exposed to other apps as a source (a "virtual mic").
@@ -136,6 +165,8 @@ impl MixerState {
             solo: false,
             hw: true,
             buses: Vec::new(),
+            hw_db: 0.0,
+            send_db: Vec::new(),
             catch_all: false,
             apps: Vec::new(),
             blocked: Vec::new(),
@@ -164,6 +195,7 @@ impl MixerState {
         self.buses.retain(|b| b.id != id);
         for s in &mut self.strips {
             s.buses.retain(|b| *b != id);
+            s.send_db.retain(|x| x.bus != id);
         }
     }
 
@@ -213,6 +245,11 @@ impl MixerState {
         let bus_ids: Vec<BusId> = self.buses.iter().map(|b| b.id).collect();
         for s in &mut self.strips {
             s.gain_db = s.gain_db.clamp(MIN_DB, MAX_DB);
+            s.hw_db = s.hw_db.clamp(MIN_DB, MAX_DB);
+            s.send_db.retain(|x| bus_ids.contains(&x.bus));
+            for x in &mut s.send_db {
+                x.db = x.db.clamp(MIN_DB, MAX_DB);
+            }
             s.buses.retain(|b| bus_ids.contains(b));
             if matches!(s.source, StripSource::Device { .. }) {
                 s.catch_all = false;

@@ -227,11 +227,11 @@ impl Render for Fader {
                             .h_full()
                             .border_1()
                             .border_color(rgb(theme::BORDER_STRONG))
-                            .bg(rgb(0x010503))
+                            .bg(rgb(theme::PANEL_SUNKEN))
                             .children(
                                 [
-                                    (db::MIN_DB, -12., theme::MINT),
-                                    (-12., -3., theme::AMBER),
+                                    (db::MIN_DB, -12., theme::GREEN),
+                                    (-12., -3., theme::ORANGE),
                                     (-3., db::MAX_DB, theme::RED),
                                 ]
                                 .into_iter()
@@ -266,9 +266,15 @@ impl Render for Fader {
                             .h(px(14.))
                             .rounded_sm()
                             .border_1()
-                            .border_color(rgb(theme::MINT))
+                            .border_color(rgb(theme::ACCENT))
                             .bg(rgb(theme::TEXT))
-                            .child(div().mt(px(6.)).h(px(2.)).w_full().bg(rgb(theme::MINT_DIM))),
+                            .child(
+                                div()
+                                    .mt(px(6.))
+                                    .h(px(2.))
+                                    .w_full()
+                                    .bg(rgb(theme::ACCENT_DIM)),
+                            ),
                     )
                     .on_mouse_down(
                         MouseButton::Left,
@@ -300,7 +306,7 @@ impl Render for Fader {
                     .flex_none()
                     .font_family(theme::FONT_MONO)
                     .text_sm()
-                    .text_color(rgb(theme::MINT))
+                    .text_color(rgb(theme::ACCENT))
                     .child(format!("{:+.1} dB", self.gain)),
             )
     }

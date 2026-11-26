@@ -1,11 +1,25 @@
 use crate::theme;
-use gpui::{div, prelude::*, rgb, Div, ElementId, Stateful};
+use gpui::{div, prelude::*, rgb, rgba, Div, ElementId, Stateful};
 
 pub(crate) fn button(
     id: impl Into<ElementId>,
     label: impl Into<gpui::SharedString>,
     active: bool,
 ) -> Stateful<Div> {
+    tone_button(id, label, active, theme::ACCENT)
+}
+
+pub(crate) fn tone_button(
+    id: impl Into<ElementId>,
+    label: impl Into<gpui::SharedString>,
+    active: bool,
+    color: u32,
+) -> Stateful<Div> {
+    let fill = if color == theme::ACCENT {
+        rgb(theme::ACCENT_BG)
+    } else {
+        rgba((color << 8) | 0x33)
+    };
     div()
         .id(id)
         .flex()
@@ -16,16 +30,16 @@ pub(crate) fn button(
         .py_1()
         .rounded_md()
         .border_1()
-        .border_color(rgb(if active { theme::MINT } else { theme::BORDER }))
-        .bg(rgb(if active {
-            theme::MINT_BG
+        .border_color(rgb(if active { color } else { theme::BORDER }))
+        .bg(if active {
+            fill
         } else {
-            theme::PANEL_RAISED
-        }))
-        .text_color(rgb(if active { theme::MINT } else { theme::TEXT }))
+            rgb(theme::PANEL_RAISED)
+        })
+        .text_color(rgb(if active { color } else { theme::TEXT }))
         .text_xs()
         .font_family(theme::FONT_MONO)
         .cursor_pointer()
-        .hover(|s| s.border_color(rgb(theme::MINT)).bg(rgb(theme::MINT_BG)))
+        .hover(move |s| s.border_color(rgb(color)).bg(fill))
         .child(label.into())
 }

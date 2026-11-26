@@ -646,7 +646,7 @@ impl PatchbayView {
             rows[side] += 1;
             let compatible = self.target == Some(port.id);
             let color = if compatible {
-                theme::MINT
+                theme::ACCENT
             } else if port.monitor {
                 theme::TEXT_FAINT
             } else {
@@ -693,7 +693,7 @@ impl PatchbayView {
             .rounded_md()
             .border_1()
             .border_color(rgb(if node.ours {
-                theme::MINT
+                theme::ACCENT
             } else {
                 theme::BORDER_STRONG
             }))
@@ -708,7 +708,7 @@ impl PatchbayView {
                     .border_b_1()
                     .border_color(rgb(theme::BORDER))
                     .bg(rgb(if node.ours {
-                        theme::MINT_BG
+                        theme::ACCENT_BG
                     } else {
                         theme::PANEL
                     }))
@@ -716,7 +716,11 @@ impl PatchbayView {
                         div()
                             .text_sm()
                             .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .text_color(rgb(if node.ours { theme::MINT } else { theme::TEXT }))
+                            .text_color(rgb(if node.ours {
+                                theme::ACCENT
+                            } else {
+                                theme::TEXT
+                            }))
                             .overflow_hidden()
                             .text_ellipsis()
                             .child(if node.description.is_empty() {
@@ -747,9 +751,9 @@ impl Render for PatchbayView {
                 (
                     wire.points,
                     if Some(wire.id) == selected {
-                        theme::TEXT
+                        theme::MAGENTA
                     } else if wire.ours {
-                        theme::MINT
+                        theme::ACCENT
                     } else {
                         theme::TEXT_FAINT
                     },
@@ -767,7 +771,7 @@ impl Render for PatchbayView {
             } else {
                 (target, port.position)
             };
-            painted.push((curve(start, end), theme::MINT, 2.5));
+            painted.push((curve(start, end), theme::ACCENT, 2.5));
         }
         let focused = self.search_focus.is_focused(window);
         let search = if focused {
@@ -802,15 +806,15 @@ impl Render for PatchbayView {
             .child(div().flex().items_center().gap_3().p_3().border_b_1().border_color(rgb(theme::BORDER))
                 .child(div().id("patchbay-search").track_focus(&self.search_focus)
                     .w_64().h_8().px_2().flex().items_center().overflow_hidden().rounded_sm().border_1()
-                    .border_color(rgb(if focused { theme::MINT } else { theme::BORDER_STRONG }))
+                    .border_color(rgb(if focused { theme::ACCENT } else { theme::BORDER_STRONG }))
                     .bg(rgb(theme::PANEL_SUNKEN)).text_sm().text_color(rgb(if focused || !self.query.is_empty() { theme::TEXT } else { theme::TEXT_DIM }))
                     .child(search).on_mouse_down(MouseButton::Left, cx.listener(|this, _, window, cx| {
                         window.focus(&this.search_focus, cx);
                         cx.notify();
                     })).on_key_down(cx.listener(Self::search_key)))
                 .child(div().id("patchbay-scope").px_3().py_1().rounded_sm().border_1().cursor_pointer()
-                    .border_color(rgb(if self.scoped { theme::MINT_DIM } else { theme::BORDER_STRONG }))
-                    .text_sm().text_color(rgb(if self.scoped { theme::MINT } else { theme::TEXT_DIM }))
+                    .border_color(rgb(if self.scoped { theme::ACCENT_DIM } else { theme::BORDER_STRONG }))
+                    .text_sm().text_color(rgb(if self.scoped { theme::ACCENT } else { theme::TEXT_DIM }))
                     .child(if self.scoped { "Only flupmix + connected" } else { "All nodes" })
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.scoped = !this.scoped;

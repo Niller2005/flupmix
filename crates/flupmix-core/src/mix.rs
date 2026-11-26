@@ -43,13 +43,17 @@ impl Matrix {
             let audible = !s.mute && (!any_solo || s.solo);
             m.strip[slot] = if audible { db_to_gain(s.gain_db) } else { 0.0 };
             if s.hw {
-                m.send[slot][0] = hw_gain;
+                m.send[slot][0] = hw_gain * db_to_gain(s.hw_db);
             }
             for bus_id in &s.buses {
                 if let Some(b) = state.bus(*bus_id) {
                     let dest = b.slot as usize;
                     if (1..N_DEST).contains(&dest) {
-                        m.send[slot][dest] = if b.mute { 0.0 } else { db_to_gain(b.gain_db) };
+                        m.send[slot][dest] = if b.mute {
+                            0.0
+                        } else {
+                            db_to_gain(b.gain_db) * db_to_gain(s.bus_send_db(b.id))
+                        };
                     }
                 }
             }
@@ -222,6 +226,18 @@ mod tests {
         assert_eq!(Matrix::from_state(&s).strip[0], 0.0);
         s.buses[0].mute = true;
         assert_eq!(Matrix::from_state(&s).send[0][1], 0.0);
+    }
+
+    #[test]
+    fn per_strip_send_levels_scale_the_sends() {
+        let mut s = state();
+        let bus = s.buses[0].id;
+        s.strips[0].hw_db = -6.0;
+        s.strips[0].set_bus_send_db(bus, -12.0);
+        let m = Matrix::from_state(&s);
+        assert!((m.send[0][0] - db_to_gain(-6.0)).abs() < 1e-6);
+        assert!((m.send[0][1] - db_to_gain(-12.0)).abs() < 1e-6);
+        assert!((m.send[1][0] - 1.0).abs() < 1e-6);
     }
 
     #[test]

@@ -134,7 +134,7 @@ impl Render for TextField {
             .rounded_sm()
             .border_1()
             .border_color(rgb(if self.editing {
-                theme::MINT
+                theme::ACCENT
             } else {
                 theme::BORDER
             }))

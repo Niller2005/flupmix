@@ -1,28 +1,32 @@
-//! flup·trade-derived palette: near-black green surfaces, mint accent,
-//! monospace numerics, hairline borders. Contrast is deliberately higher than
-//! the reference mock-up.
+//! Cyberdream's high-contrast palette, with cyan routing accents and
+//! semantic status colours on black surfaces.
 
 use std::borrow::Cow;
 
 use gpui::App;
 
-pub const BG: u32 = 0x060a08;
-pub const PANEL: u32 = 0x0d1411;
-pub const PANEL_RAISED: u32 = 0x131d19;
-pub const PANEL_SUNKEN: u32 = 0x08100d;
-pub const BORDER: u32 = 0x2b3d35;
-pub const BORDER_STRONG: u32 = 0x45604f;
+pub const BG: u32 = 0x000000;
+pub const PANEL: u32 = 0x0b0c0f;
+pub const PANEL_RAISED: u32 = 0x16181d;
+pub const PANEL_SUNKEN: u32 = 0x050608;
+pub const BORDER: u32 = 0x3c4048;
+pub const BORDER_STRONG: u32 = 0x6b7280;
 
-pub const TEXT: u32 = 0xf4faf6;
-pub const TEXT_DIM: u32 = 0xa4b8ad;
-pub const TEXT_FAINT: u32 = 0x6f8579;
+pub const TEXT: u32 = 0xffffff;
+pub const TEXT_DIM: u32 = 0xb4bcd0;
+pub const TEXT_FAINT: u32 = 0x7b8496;
 
-pub const MINT: u32 = 0x3ceba9;
-pub const MINT_DIM: u32 = 0x1f9a6e;
-/// Tinted fill behind mint outlines and active chips.
-pub const MINT_BG: u32 = 0x0f3a2a;
-pub const AMBER: u32 = 0xf5b53a;
-pub const RED: u32 = 0xff4f60;
+pub const ACCENT: u32 = 0x5ef1ff;
+pub const ACCENT_DIM: u32 = 0x2aa5b3;
+pub const ACCENT_BG: u32 = 0x0a2d33;
+pub const GREEN: u32 = 0x5eff6c;
+pub const YELLOW: u32 = 0xf1ff5e;
+pub const ORANGE: u32 = 0xffbd5e;
+pub const RED: u32 = 0xff6e5e;
+pub const MAGENTA: u32 = 0xff5ea0;
+pub const PINK: u32 = 0xff5ef1;
+pub const PURPLE: u32 = 0xbd5eff;
+pub const BLUE: u32 = 0x5ea1ff;
 
 /// Proportional UI font (bundled, IBM Plex Sans, OFL).
 pub const FONT_UI: &str = "IBM Plex Sans";

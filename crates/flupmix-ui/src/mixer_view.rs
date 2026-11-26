@@ -1,7 +1,12 @@
 use crate::{
     app::{MixerModel, Target},
     theme,
-    widgets::{button::button, fader::Fader, text_field::TextField},
+    widgets::{
+        button::{button, tone_button},
+        fader::Fader,
+        send_slider::SendSlider,
+        text_field::TextField,
+    },
 };
 use flupmix_core::{
     mix::{MAX_BUSES, MAX_STRIPS},
@@ -14,7 +19,14 @@ use std::{cell::Cell, collections::HashMap, rc::Rc, sync::Arc, time::Duration};
 
 // Reserve identical routing/control space below every fader, including bus cards.
 fn control_stack_height(bus_count: usize) -> gpui::Pixels {
-    px(184. + bus_count as f32 * 40.)
+    px(212. + bus_count as f32 * 64.)
+}
+
+fn bus_section_width(bus_count: usize, window_width: gpui::Pixels) -> gpui::Pixels {
+    // Include the section's left gutter/border and every inter-card gap.
+    let natural = 17. + (bus_count + 1) as f32 * 150. + bus_count as f32 * 12.;
+    let available = (f32::from(window_width) - 32. - 16. - 164.).max(150.);
+    px(natural.min(available))
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -29,6 +41,7 @@ pub(crate) struct MixerView {
     model: Entity<MixerModel>,
     snapshot: Arc<Snapshot>,
     faders: HashMap<Target, Entity<Fader>>,
+    send_sliders: HashMap<(u32, Option<u32>), Entity<SendSlider>>,
     names: HashMap<Target, Entity<TextField>>,
     pattern: Entity<TextField>,
     menu: Option<Menu>,
@@ -65,6 +78,7 @@ impl MixerView {
             model,
             snapshot,
             faders: HashMap::new(),
+            send_sliders: HashMap::new(),
             names: HashMap::new(),
             pattern: cx.new(|cx| TextField::new(String::new(), |_, _| {}, cx)),
             menu: None,
@@ -142,6 +156,18 @@ impl MixerView {
                     )
                 })
             })
+            .clone()
+    }
+
+    fn send_slider(
+        &mut self,
+        strip: u32,
+        bus: Option<u32>,
+        cx: &mut Context<Self>,
+    ) -> Entity<SendSlider> {
+        self.send_sliders
+            .entry((strip, bus))
+            .or_insert_with(|| cx.new(|cx| SendSlider::new(self.model.clone(), strip, bus, cx)))
             .clone()
     }
 
@@ -242,11 +268,14 @@ impl MixerView {
         );
         let hw_name = self.model.read(cx).state.hw.name.to_uppercase();
         let controls_height = control_stack_height(buses.len());
+        let hw_slider = self.send_slider(id, None, cx);
         div()
             .id(("strip", id))
             .w(px(164.))
+            .min_w(px(164.))
             .h_full()
-            .flex_none()
+            .flex_grow_1()
+            .flex_shrink_0()
             .flex()
             .flex_col()
             .gap_2()
@@ -274,7 +303,7 @@ impl MixerView {
                     .overflow_hidden()
                     .text_xs()
                     .text_color(rgb(if missing {
-                        theme::AMBER
+                        theme::ORANGE
                     } else {
                         theme::TEXT_DIM
                     }))
@@ -313,6 +342,7 @@ impl MixerView {
                             },
                         )),
                     )
+                    .child(hw_slider)
                     .child(
                         div()
                             .h_4()
@@ -324,50 +354,66 @@ impl MixerView {
                             .child("BUS"),
                     )
                     .children(buses.into_iter().map(|(bus, name)| {
-                        button(
-                            ("route", id as u64 * 32 + bus as u64),
-                            name,
-                            strip.buses.contains(&bus),
-                        )
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.change(cx, |s| {
-                                if let Some(s) = s.strip_mut(id) {
-                                    if s.buses.contains(&bus) {
-                                        s.buses.retain(|b| *b != bus);
-                                    } else {
-                                        s.buses.push(bus);
-                                    }
-                                }
-                            })
-                        }))
+                        let slider = self.send_slider(id, Some(bus), cx);
+                        div()
+                            .h(px(56.))
+                            .flex_none()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                button(
+                                    ("route", id as u64 * 32 + bus as u64),
+                                    name,
+                                    strip.buses.contains(&bus),
+                                )
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        this.change(cx, |s| {
+                                            if let Some(s) = s.strip_mut(id) {
+                                                if s.buses.contains(&bus) {
+                                                    s.buses.retain(|b| *b != bus);
+                                                } else {
+                                                    s.buses.push(bus);
+                                                }
+                                            }
+                                        })
+                                    },
+                                )),
+                            )
+                            .child(slider)
                     }))
                     .child(div().h_2().flex_none())
                     .child(
                         div()
                             .flex()
                             .gap_2()
-                            .child(button(("mute", id), "M", strip.mute).flex_1().on_click(
-                                cx.listener(move |this, _, _, cx| {
-                                    this.change(cx, |s| {
-                                        if let Some(s) = s.strip_mut(id) {
-                                            s.mute = !s.mute;
-                                        }
-                                    })
-                                }),
-                            ))
-                            .child(button(("solo", id), "S", strip.solo).flex_1().on_click(
-                                cx.listener(move |this, _, _, cx| {
-                                    this.change(cx, |s| {
-                                        if let Some(s) = s.strip_mut(id) {
-                                            s.solo = !s.solo;
-                                        }
-                                    })
-                                }),
-                            )),
+                            .child(
+                                tone_button(("mute", id), "M", strip.mute, theme::RED)
+                                    .flex_1()
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.change(cx, |s| {
+                                            if let Some(s) = s.strip_mut(id) {
+                                                s.mute = !s.mute;
+                                            }
+                                        })
+                                    })),
+                            )
+                            .child(
+                                tone_button(("solo", id), "S", strip.solo, theme::YELLOW)
+                                    .flex_1()
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.change(cx, |s| {
+                                            if let Some(s) = s.strip_mut(id) {
+                                                s.solo = !s.solo;
+                                            }
+                                        })
+                                    })),
+                            ),
                     )
                     .when(virtual_strip, |d| {
                         d.child(
-                            button(
+                            tone_button(
                                 ("apps", id),
                                 if strip.catch_all {
                                     "APPS · ALL"
@@ -375,6 +421,7 @@ impl MixerView {
                                     "APPS"
                                 },
                                 strip.catch_all,
+                                theme::PURPLE,
                             )
                             .on_click(
                                 cx.listener(move |this, _, w, cx| this.show(Menu::Apps(id), w, cx)),
@@ -447,7 +494,7 @@ impl MixerView {
             .rounded_lg()
             .border_1()
             .border_color(rgb(if hardware {
-                theme::MINT
+                theme::ACCENT
             } else {
                 theme::BORDER_STRONG
             }))
@@ -465,9 +512,9 @@ impl MixerView {
                     .text_xs()
                     .font_family(theme::FONT_MONO)
                     .text_color(rgb(if sink_missing && hardware {
-                        theme::AMBER
+                        theme::ORANGE
                     } else {
-                        theme::MINT
+                        theme::ACCENT
                     }))
                     .when(hardware, |d| {
                         d.cursor_pointer()
@@ -488,19 +535,21 @@ impl MixerView {
                     .flex_col()
                     .gap_2()
                     .child(div().flex_1())
-                    .child(button(("bus-mute", slot), "M", mute).on_click(cx.listener(
-                        move |this, _, _, cx| {
-                            this.change(cx, |state| match target {
-                                Target::Hardware => state.hw.mute = !state.hw.mute,
-                                Target::Bus(id) => {
-                                    if let Some(b) = state.bus_mut(id) {
-                                        b.mute = !b.mute;
+                    .child(
+                        tone_button(("bus-mute", slot), "M", mute, theme::RED).on_click(
+                            cx.listener(move |this, _, _, cx| {
+                                this.change(cx, |state| match target {
+                                    Target::Hardware => state.hw.mute = !state.hw.mute,
+                                    Target::Bus(id) => {
+                                        if let Some(b) = state.bus_mut(id) {
+                                            b.mute = !b.mute;
+                                        }
                                     }
-                                }
-                                Target::Strip(_) => unreachable!(),
-                            })
-                        },
-                    )))
+                                    Target::Strip(_) => unreachable!(),
+                                })
+                            }),
+                        ),
+                    )
                     .when(!hardware, |d| {
                         d.child(button(("delete-bus", slot), "REMOVE", false).on_click(
                             cx.listener(move |this, _, _, cx| {
@@ -564,10 +613,11 @@ impl MixerView {
             .gap_3()
             .child(format!("APP ROUTING / {}", strip.name))
             .child(
-                button(
+                tone_button(
                     "catch-all",
                     "Catch-all · receive unclaimed apps",
                     strip.catch_all,
+                    theme::PURPLE,
                 )
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.change(cx, |state| {
@@ -824,7 +874,7 @@ impl MixerView {
                     .p_5()
                     .rounded_lg()
                     .border_1()
-                    .border_color(rgb(theme::MINT_DIM))
+                    .border_color(rgb(theme::ACCENT_DIM))
                     .bg(rgb(theme::PANEL_RAISED))
                     .shadow_lg()
                     .on_mouse_down_out(cx.listener(|this, _, _, cx| {
@@ -846,11 +896,12 @@ impl MixerView {
 }
 
 impl Render for MixerView {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let state = &self.model.read(cx).state;
         let strip_ids: Vec<_> = state.strips.iter().map(|s| s.id).collect();
         let bus_ids: Vec<_> = state.buses.iter().map(|b| b.id).collect();
-        let minimum_height = px(760. + state.buses.len() as f32 * 40.);
+        let minimum_height = px(576.) + control_stack_height(state.buses.len());
+        let bus_section_width = bus_section_width(state.buses.len(), window.viewport_size().width);
         self.names.retain(|key, _| match key {
             Target::Strip(id) => strip_ids.contains(id),
             Target::Bus(id) => bus_ids.contains(id),
@@ -860,6 +911,9 @@ impl Render for MixerView {
             Target::Strip(id) => strip_ids.contains(id),
             Target::Bus(id) => bus_ids.contains(id),
             Target::Hardware => true,
+        });
+        self.send_sliders.retain(|(strip, bus), _| {
+            strip_ids.contains(strip) && bus.is_none_or(|id| bus_ids.contains(&id))
         });
         let strips: Vec<_> = strip_ids.into_iter().map(|id| self.strip(id, cx)).collect();
         let hw = self.bus(Target::Hardware, cx);
@@ -911,7 +965,7 @@ impl Render for MixerView {
                                     .id("buses-scroll")
                                     .h_full()
                                     .flex_none()
-                                    .max_w(px(620.))
+                                    .w(bus_section_width)
                                     .overflow_x_scroll()
                                     .flex()
                                     .gap_3()
@@ -924,5 +978,30 @@ impl Render for MixerView {
                     ),
             )
             .children(popup)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn buses_use_their_natural_width_when_there_is_room() {
+        assert_eq!(bus_section_width(4, px(2552.)), px(815.));
+    }
+
+    #[test]
+    fn overflowing_buses_leave_room_for_a_strip_and_window_gutters() {
+        assert_eq!(bus_section_width(MAX_BUSES, px(860.)), px(648.));
+    }
+
+    #[test]
+    fn every_bus_adds_a_button_and_slider_row_to_the_shared_control_stack() {
+        for count in 0..MAX_BUSES {
+            assert_eq!(
+                control_stack_height(count + 1) - control_stack_height(count),
+                px(64.)
+            );
+        }
     }
 }

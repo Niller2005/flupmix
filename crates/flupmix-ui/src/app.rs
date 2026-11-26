@@ -171,7 +171,7 @@ impl Render for RootView {
                             .mr_6()
                             .text_2xl()
                             .child("flup")
-                            .child(div().text_color(rgb(theme::MINT)).child("·mix")),
+                            .child(div().text_color(rgb(theme::ACCENT)).child("·mix")),
                     )
                     .child(
                         button("mixer-tab", "Mixer", self.tab == Tab::Mixer).on_click(cx.listener(
@@ -194,12 +194,12 @@ impl Render for RootView {
                             .text_xs()
                             .border_1()
                             .border_color(rgb(if self.connected {
-                                theme::MINT_DIM
+                                theme::GREEN
                             } else {
                                 theme::BORDER
                             }))
                             .text_color(rgb(if self.connected {
-                                theme::MINT
+                                theme::GREEN
                             } else {
                                 theme::TEXT_DIM
                             }))

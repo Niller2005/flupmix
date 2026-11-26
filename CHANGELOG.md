@@ -7,6 +7,13 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+### Added
+- Per-input send level sliders for the hardware bus and every virtual bus.
+
+### Changed
+- High-contrast cyberdream colour theme.
+- Buses section keeps its natural width and scrolls on its own instead of being clipped.
+
 ## [0.1.0] - 2026-11-26
 
 First release.
