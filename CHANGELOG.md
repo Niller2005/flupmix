@@ -7,11 +7,15 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-26
+
 ### Added
 - Per-input send level sliders for the hardware bus and every virtual bus.
+- AppImage release asset (bundles the binary; PipeWire, Wayland and GPU libraries come from the host).
 
 ### Changed
 - High-contrast cyberdream colour theme.
+- Input strips keep a fixed width.
 - Buses section keeps its natural width and scrolls on its own instead of being clipped.
 
 ## [0.1.0] - 2026-11-26
@@ -28,5 +32,6 @@ First release.
 - TOML persistence in `~/.config/flupmix/config.toml`, system tray (StatusNotifierItem) with keep-running on window close.
 - Desktop entry, icon and `install.sh` for per-user installation.
 
-[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Niller2005/flupmix/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Niller2005/flupmix/releases/tag/v0.1.0

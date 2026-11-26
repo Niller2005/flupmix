@@ -35,7 +35,7 @@ cargo run --release -p flupmix
 
 ## Install
 
-`./install.sh` builds a release binary (or uses a prebuilt one from a release tarball) and installs it with its icon and desktop entry under `~/.local` (`PREFIX=/usr/local sudo -E ./install.sh` for system-wide), so flupmix appears in your app menu. `./install.sh uninstall` removes it. Prebuilt x86_64 Linux tarballs are attached to each GitHub release.
+`./install.sh` builds a release binary (or uses a prebuilt one from a release tarball) and installs it with its icon and desktop entry under `~/.local` (`PREFIX=/usr/local sudo -E ./install.sh` for system-wide), so flupmix appears in your app menu. `./install.sh uninstall` removes it. Each GitHub release also has a prebuilt x86_64 tarball and an AppImage (`chmod +x flupmix-*.AppImage && ./flupmix-*.AppImage`). The AppImage contains only the binary, so it needs PipeWire and Wayland/X11 plus Vulkan or GL drivers from the host, and a glibc as new as Ubuntu 24.04's.
 
 ## Releasing
 

@@ -62,6 +62,14 @@ jobs:
           (cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256")
           echo "archive=dist/$name.tar.gz" >> "$GITHUB_OUTPUT"
 
+      - name: Build AppImage
+        id: appimage
+        run: |
+          packaging/appimage.sh "${GITHUB_REF_NAME}" dist
+          img="dist/flupmix-${GITHUB_REF_NAME}-x86_64.AppImage"
+          (cd dist && sha256sum "$(basename "$img")" > "$(basename "$img").sha256")
+          echo "image=$img" >> "$GITHUB_OUTPUT"
+
       - name: Publish release
         uses: softprops/action-gh-release@v3
         with:
@@ -71,3 +79,5 @@ jobs:
           files: |
             ${{ steps.pkg.outputs.archive }}
             ${{ steps.pkg.outputs.archive }}.sha256
+            ${{ steps.appimage.outputs.image }}
+            ${{ steps.appimage.outputs.image }}.sha256
