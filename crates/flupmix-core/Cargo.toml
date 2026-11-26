@@ -1,0 +1,10 @@
+[package]
+name = "flupmix-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pure mixer model, DSP and routing rules for flupmix (no audio server dependency)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
