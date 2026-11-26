@@ -1,0 +1,10 @@
+[package]
+name = "flupmix-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+flupmix-core = { path = "../flupmix-core" }
+gpui.workspace = true
+gpui_platform.workspace = true
