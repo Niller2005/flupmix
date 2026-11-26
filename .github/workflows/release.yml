@@ -44,7 +44,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends build-essential pkg-config clang cmake libpipewire-0.3-dev libspa-0.2-dev libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev libx11-xcb-dev libxcb1-dev libxcb-xkb-dev libfontconfig-dev libfreetype-dev libvulkan-dev libasound2-dev libssl-dev libzstd-dev
       - uses: dtolnay/rust-toolchain@stable
+      # Tag runs can only read caches saved on the default branch, so share
+      # CI's key and never save from a tag (tag-scoped caches are never reused).
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: build
+          save-if: false
 
       - run: cargo test --workspace
       - run: cargo build --release --locked -p flupmix
