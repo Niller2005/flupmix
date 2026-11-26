@@ -7,6 +7,8 @@ section matching the pushed tag as the GitHub release notes.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-26
+
 ### Added
 - Meter style setting: continuous bar or segmented LED ladder.
 
@@ -58,7 +60,8 @@ First release.
 - TOML persistence in `~/.config/flupmix/config.toml`, system tray (StatusNotifierItem) with keep-running on window close.
 - Desktop entry, icon and `install.sh` for per-user installation.
 
-[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/Niller2005/flupmix/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/Niller2005/flupmix/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/Niller2005/flupmix/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Niller2005/flupmix/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Niller2005/flupmix/compare/v0.3.0...v0.3.1
